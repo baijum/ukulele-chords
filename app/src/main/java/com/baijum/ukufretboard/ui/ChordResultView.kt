@@ -1,10 +1,18 @@
 package com.baijum.ukufretboard.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,14 +34,20 @@ import com.baijum.ukufretboard.domain.ChordDetector
  *
  * @param detectionResult The current [ChordDetector.DetectionResult] to display.
  * @param fingerPositions A string like "0 - 0 - 0 - 3" showing fret positions per string.
+ * @param onPlayChord Callback invoked when the user taps the play/strum button.
+ * @param soundEnabled Whether sound playback is enabled. When false, the play button is hidden.
  * @param modifier Optional [Modifier] for layout customization.
  */
 @Composable
 fun ChordResultView(
     detectionResult: ChordDetector.DetectionResult,
     fingerPositions: String,
+    onPlayChord: () -> Unit,
+    soundEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val hasNotes = detectionResult !is ChordDetector.DetectionResult.NoSelection
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -50,10 +64,10 @@ fun ChordResultView(
             }
 
             is ChordDetector.DetectionResult.SingleNote -> {
-                Text(
+                ChordHeadlineWithPlay(
                     text = detectionResult.note.name,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    onPlay = onPlayChord,
+                    showPlay = soundEnabled,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -65,10 +79,10 @@ fun ChordResultView(
 
             is ChordDetector.DetectionResult.Interval -> {
                 val noteNames = detectionResult.notes.joinToString(" \u2013 ") { it.name }
-                Text(
+                ChordHeadlineWithPlay(
                     text = noteNames,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    onPlay = onPlayChord,
+                    showPlay = soundEnabled,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -79,10 +93,10 @@ fun ChordResultView(
             }
 
             is ChordDetector.DetectionResult.ChordFound -> {
-                Text(
+                ChordHeadlineWithPlay(
                     text = detectionResult.result.name,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    onPlay = onPlayChord,
+                    showPlay = soundEnabled,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -99,10 +113,11 @@ fun ChordResultView(
             }
 
             is ChordDetector.DetectionResult.NoMatch -> {
-                Text(
+                ChordHeadlineWithPlay(
                     text = "No exact chord match",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    onPlay = onPlayChord,
+                    showPlay = soundEnabled,
+                    isSmall = true,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -114,7 +129,7 @@ fun ChordResultView(
         }
 
         // Finger positions (shown for all states except NoSelection)
-        if (detectionResult !is ChordDetector.DetectionResult.NoSelection) {
+        if (hasNotes) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = fingerPositions,
@@ -122,6 +137,49 @@ fun ChordResultView(
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/**
+ * Displays a chord/note headline with an optional play button to the right.
+ *
+ * @param text The chord or note name to display.
+ * @param onPlay Callback when the play button is tapped.
+ * @param showPlay Whether to show the play button (hidden when sound is disabled).
+ * @param isSmall Whether to use a smaller text style (for "No match" state).
+ */
+@Composable
+private fun ChordHeadlineWithPlay(
+    text: String,
+    onPlay: () -> Unit,
+    showPlay: Boolean = true,
+    isSmall: Boolean = false,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = if (isSmall) MaterialTheme.typography.headlineSmall
+            else MaterialTheme.typography.headlineLarge,
+            color = if (isSmall) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.primary,
+        )
+        if (showPlay) {
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(
+                onClick = onPlay,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Play sound",
+                    modifier = Modifier.size(32.dp),
+                )
+            }
         }
     }
 }

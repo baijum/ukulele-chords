@@ -1,13 +1,16 @@
 package com.baijum.ukufretboard.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.baijum.ukufretboard.data.ThemeMode
 
 // Calm, warm palette inspired by natural wood tones and teal accents
 private val DeepTeal = Color(0xFF00695C)
@@ -19,7 +22,7 @@ private val MutedBrown = Color(0xFF8D6E63)
 private val SoftAmber = Color(0xFFFFB74D)
 private val LightGray = Color(0xFFF5F5F5)
 
-private val AppColorScheme = lightColorScheme(
+private val LightColorScheme = lightColorScheme(
     primary = DeepTeal,
     onPrimary = Color.White,
     primaryContainer = LightTeal,
@@ -35,6 +38,24 @@ private val AppColorScheme = lightColorScheme(
     background = Cream,
     onBackground = DarkBrown,
     outline = Color(0xFFBCAAA4),
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = LightTeal,
+    onPrimary = DarkBrown,
+    primaryContainer = DeepTeal,
+    onPrimaryContainer = Color(0xFFB2DFDB),
+    secondary = SoftAmber,
+    onSecondary = DarkBrown,
+    secondaryContainer = Color(0xFF795548),
+    onSecondaryContainer = Color(0xFFFFE0B2),
+    surface = Color(0xFF1C1B1F),
+    onSurface = Color(0xFFE6E1E5),
+    surfaceVariant = Color(0xFF2D2D30),
+    onSurfaceVariant = Color(0xFFCAC4D0),
+    background = Color(0xFF1C1B1F),
+    onBackground = Color(0xFFE6E1E5),
+    outline = Color(0xFF938F99),
 )
 
 private val AppTypography = Typography(
@@ -74,11 +95,22 @@ private val AppTypography = Typography(
  *
  * Uses a warm, calm color palette suitable for an educational tool,
  * with teal primary accents and wood-inspired neutral tones.
+ *
+ * @param themeMode Controls whether to use Light, Dark, or System theme.
  */
 @Composable
-fun UkuFretboardTheme(content: @Composable () -> Unit) {
+fun UkuFretboardTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit,
+) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
     MaterialTheme(
-        colorScheme = AppColorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         typography = AppTypography,
         content = content,
     )

@@ -1,7 +1,8 @@
 package com.baijum.ukufretboard.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,10 +57,13 @@ private val LABEL_WIDTH = 20.dp
  * @param onClick Callback invoked when the card is tapped.
  * @param modifier Optional [Modifier] for layout customization.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChordDiagramPreview(
     voicing: ChordVoicing,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Determine the fret range to display dynamically
@@ -82,7 +86,10 @@ fun ChordDiagramPreview(
     val isAtNut = startFret == 0
 
     Card(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onLongClick,
+        ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -94,7 +101,11 @@ fun ChordDiagramPreview(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Fret numbers header
-            FretNumbersHeader(startFret = startFret, columnCount = columnCount)
+            FretNumbersHeader(
+                startFret = startFret,
+                columnCount = columnCount,
+                leftHanded = leftHanded,
+            )
 
             // Diagram body: strings with dots
             DiagramBody(
@@ -102,6 +113,7 @@ fun ChordDiagramPreview(
                 startFret = startFret,
                 columnCount = columnCount,
                 isAtNut = isAtNut,
+                leftHanded = leftHanded,
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -121,9 +133,10 @@ fun ChordDiagramPreview(
  * Header row showing fret numbers above the diagram columns.
  */
 @Composable
-private fun FretNumbersHeader(startFret: Int, columnCount: Int) {
+private fun FretNumbersHeader(startFret: Int, columnCount: Int, leftHanded: Boolean = false) {
+    val colRange = if (leftHanded) (columnCount - 1 downTo 0) else (0 until columnCount)
     Row(modifier = Modifier.padding(start = LABEL_WIDTH)) {
-        repeat(columnCount) { col ->
+        colRange.forEach { col ->
             val fretNum = startFret + col
             Box(
                 modifier = Modifier
@@ -153,6 +166,7 @@ private fun DiagramBody(
     startFret: Int,
     columnCount: Int,
     isAtNut: Boolean,
+    leftHanded: Boolean = false,
 ) {
     val stringColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
     val fretColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
@@ -195,9 +209,10 @@ private fun DiagramBody(
                 }
 
                 // Fret cells
-                repeat(columnCount) { col ->
+                val colRange = if (leftHanded) (columnCount - 1 downTo 0) else (0 until columnCount)
+                colRange.forEach { col ->
                     val diagramFret = startFret + col
-                    val isNutColumn = isAtNut && col == 0
+                    val isNutColumn = isAtNut && diagramFret == 0
 
                     Box(
                         modifier = Modifier
@@ -211,13 +226,24 @@ private fun DiagramBody(
                                     end = Offset(size.width, size.height / 2),
                                     strokeWidth = 1.5f,
                                 )
-                                // Fret wire on right edge
-                                drawLine(
-                                    color = if (isNutColumn) nutColor else fretColor,
-                                    start = Offset(size.width, 0f),
-                                    end = Offset(size.width, size.height),
-                                    strokeWidth = if (isNutColumn) 3f else 1f,
-                                )
+                                if (isNutColumn) {
+                                    // Nut: thick line on the side toward the fretted notes
+                                    val nutX = if (leftHanded) 0f else size.width
+                                    drawLine(
+                                        color = nutColor,
+                                        start = Offset(nutX, 0f),
+                                        end = Offset(nutX, size.height),
+                                        strokeWidth = 3f,
+                                    )
+                                } else {
+                                    // Regular fret wire on right edge
+                                    drawLine(
+                                        color = fretColor,
+                                        start = Offset(size.width, 0f),
+                                        end = Offset(size.width, size.height),
+                                        strokeWidth = 1f,
+                                    )
+                                }
                             },
                         contentAlignment = Alignment.Center,
                     ) {

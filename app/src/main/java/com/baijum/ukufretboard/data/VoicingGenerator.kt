@@ -44,6 +44,7 @@ object VoicingGenerator {
         rootPitchClass: Int,
         formula: ChordFormula,
         tuning: List<UkuleleString>,
+        useFlats: Boolean = false,
     ): List<ChordVoicing> {
         val stringCount = tuning.size
 
@@ -102,7 +103,7 @@ object VoicingGenerator {
 
         // Convert to ChordVoicing objects and sort
         return results
-            .map { frets -> toVoicing(frets, tuning) }
+            .map { frets -> toVoicing(frets, tuning, useFlats) }
             .sortedWith(voicingComparator())
             .take(MAX_VOICINGS)
     }
@@ -178,10 +179,14 @@ object VoicingGenerator {
     /**
      * Converts a fret pattern to a [ChordVoicing] with computed notes and fret range.
      */
-    private fun toVoicing(frets: List<Int>, tuning: List<UkuleleString>): ChordVoicing {
+    private fun toVoicing(
+        frets: List<Int>,
+        tuning: List<UkuleleString>,
+        useFlats: Boolean = false,
+    ): ChordVoicing {
         val notes = frets.mapIndexed { i, fret ->
             val pc = (tuning[i].openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
-            Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
+            Note(pitchClass = pc, name = Notes.pitchClassToName(pc, useFlats))
         }
         val frettedPositions = frets.filter { it > 0 }
         return ChordVoicing(

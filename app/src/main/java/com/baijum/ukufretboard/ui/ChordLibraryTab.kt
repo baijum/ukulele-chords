@@ -52,6 +52,9 @@ import com.baijum.ukufretboard.viewmodel.ChordLibraryViewModel
 fun ChordLibraryTab(
     viewModel: ChordLibraryViewModel,
     onVoicingSelected: (ChordVoicing) -> Unit,
+    onVoicingLongPressed: ((ChordVoicing) -> Unit)? = null,
+    useFlats: Boolean = false,
+    leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -66,6 +69,7 @@ fun ChordLibraryTab(
         RootNoteSelector(
             selectedRoot = uiState.selectedRoot,
             onRootSelected = viewModel::selectRoot,
+            useFlats = useFlats,
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -85,13 +89,28 @@ fun ChordLibraryTab(
             selectedFormula = uiState.selectedFormula,
             selectedRoot = uiState.selectedRoot,
             onFormulaSelected = viewModel::selectFormula,
+            useFlats = useFlats,
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Section: Transpose controls
+        if (uiState.selectedFormula != null) {
+            TransposeControls(
+                rootPitchClass = uiState.selectedRoot,
+                chordSymbol = uiState.selectedFormula?.symbol ?: "",
+                semitoneOffset = 0, // Stateless — offset is reflected in root selection
+                originalRoot = uiState.selectedRoot,
+                useFlats = useFlats,
+                onTranspose = { viewModel.transpose(it) },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Section: Voicing results
         if (uiState.voicings.isNotEmpty()) {
-            val rootName = Notes.pitchClassToName(uiState.selectedRoot)
+            val rootName = Notes.pitchClassToName(uiState.selectedRoot, useFlats)
             val symbol = uiState.selectedFormula?.symbol ?: ""
             SectionLabel("$rootName$symbol — ${uiState.voicings.size} voicings")
         }
@@ -99,6 +118,8 @@ fun ChordLibraryTab(
         VoicingGrid(
             voicings = uiState.voicings,
             onVoicingSelected = onVoicingSelected,
+            onVoicingLongPressed = onVoicingLongPressed,
+            leftHanded = leftHanded,
             modifier = Modifier.weight(1f),
         )
     }
@@ -126,7 +147,9 @@ private fun SectionLabel(text: String) {
 private fun RootNoteSelector(
     selectedRoot: Int,
     onRootSelected: (Int) -> Unit,
+    useFlats: Boolean = false,
 ) {
+    val noteNames = if (useFlats) Notes.NOTE_NAMES_FLAT else Notes.NOTE_NAMES_SHARP
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -134,7 +157,7 @@ private fun RootNoteSelector(
             .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Notes.NOTE_NAMES.forEachIndexed { index, name ->
+        noteNames.forEachIndexed { index, name ->
             FilterChip(
                 selected = index == selectedRoot,
                 onClick = { onRootSelected(index) },
@@ -199,9 +222,10 @@ private fun FormulaSelector(
     selectedFormula: ChordFormula?,
     selectedRoot: Int,
     onFormulaSelected: (ChordFormula) -> Unit,
+    useFlats: Boolean = false,
 ) {
     val formulas = ChordFormulas.BY_CATEGORY[category] ?: emptyList()
-    val rootName = Notes.pitchClassToName(selectedRoot)
+    val rootName = Notes.pitchClassToName(selectedRoot, useFlats)
 
     Row(
         modifier = Modifier
@@ -237,6 +261,8 @@ private fun FormulaSelector(
 private fun VoicingGrid(
     voicings: List<ChordVoicing>,
     onVoicingSelected: (ChordVoicing) -> Unit,
+    onVoicingLongPressed: ((ChordVoicing) -> Unit)? = null,
+    leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (voicings.isEmpty()) {
@@ -264,6 +290,8 @@ private fun VoicingGrid(
                 ChordDiagramPreview(
                     voicing = voicing,
                     onClick = { onVoicingSelected(voicing) },
+                    onLongClick = onVoicingLongPressed?.let { callback -> { callback(voicing) } },
+                    leftHanded = leftHanded,
                 )
             }
         }

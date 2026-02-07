@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,8 +55,12 @@ private val SELECTED_DOT_SIZE = 36.dp
 /** Size of the outlined circle for an open string indicator. */
 private val OPEN_STRING_DOT_SIZE = 28.dp
 
-/** Warm wood-tone background for the fretboard area. */
-private val FretboardBackground = Color(0xFFF5E6D3)
+/**
+ * Warm wood-tone background for the fretboard area in light theme.
+ * In dark theme, the surfaceVariant token from the color scheme is used instead.
+ */
+private val FretboardBackgroundLight = Color(0xFFF5E6D3)
+private val FretboardBackgroundDark = Color(0xFF3A322D)
 
 /** Fret numbers where traditional position markers (dots) appear. */
 private val SINGLE_MARKER_FRETS = setOf(5, 7, 10)
@@ -87,9 +92,17 @@ fun FretboardView(
     showNoteNames: Boolean,
     onFretTap: (stringIndex: Int, fret: Int) -> Unit,
     getNoteAt: (stringIndex: Int, fret: Int) -> Note,
+    leftHanded: Boolean = false,
+    scaleNotes: Set<Int> = emptySet(),
+    scaleRoot: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
+    val fretRange = if (leftHanded) {
+        (FretboardViewModel.LAST_FRET downTo FretboardViewModel.OPEN_STRING_FRET).toList()
+    } else {
+        (FretboardViewModel.OPEN_STRING_FRET..FretboardViewModel.LAST_FRET).toList()
+    }
 
     Row(modifier = modifier.padding(start = 4.dp)) {
         // Fixed string labels column (does not scroll)
@@ -120,25 +133,34 @@ fun FretboardView(
         Column(
             modifier = Modifier
                 .horizontalScroll(scrollState)
-                .background(FretboardBackground, RoundedCornerShape(8.dp))
+                .background(
+                    if (isSystemInDarkTheme()) FretboardBackgroundDark else FretboardBackgroundLight,
+                    RoundedCornerShape(8.dp),
+                )
                 .padding(end = 4.dp),
         ) {
             // Fret numbers row
-            FretNumbersRow()
+            FretNumbersRow(fretRange = fretRange)
 
             // Position markers row (dots at frets 5, 7, 10, 12)
-            FretMarkersRow()
+            FretMarkersRow(fretRange = fretRange)
 
             // String rows with fret cells
             tuning.forEachIndexed { stringIndex, _ ->
                 Row {
-                    repeat(FretboardViewModel.FRET_COUNT) { fret ->
+                    fretRange.forEach { fret ->
+                        val note = getNoteAt(stringIndex, fret)
+                        val inScale = note.pitchClass in scaleNotes
+                        val isScaleRoot = scaleRoot != null && note.pitchClass == scaleRoot
                         FretCell(
-                            note = getNoteAt(stringIndex, fret),
+                            note = note,
                             isSelected = selections[stringIndex] == fret,
                             isOpenString = fret == FretboardViewModel.OPEN_STRING_FRET,
                             showNoteNames = showNoteNames,
                             onClick = { onFretTap(stringIndex, fret) },
+                            isNutOnLeft = !leftHanded,
+                            isInScale = inScale,
+                            isScaleRoot = isScaleRoot,
                             modifier = Modifier.size(CELL_WIDTH, CELL_HEIGHT),
                         )
                     }
@@ -152,9 +174,9 @@ fun FretboardView(
  * Row of fret numbers (0–12) displayed above the fretboard grid.
  */
 @Composable
-private fun FretNumbersRow() {
+private fun FretNumbersRow(fretRange: List<Int>) {
     Row {
-        repeat(FretboardViewModel.FRET_COUNT) { fret ->
+        fretRange.forEach { fret ->
             Box(
                 modifier = Modifier
                     .width(CELL_WIDTH)
@@ -178,11 +200,11 @@ private fun FretNumbersRow() {
  * A double dot appears at fret 12 (the octave).
  */
 @Composable
-private fun FretMarkersRow() {
+private fun FretMarkersRow(fretRange: List<Int>) {
     val markerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
 
     Row {
-        repeat(FretboardViewModel.FRET_COUNT) { fret ->
+        fretRange.forEach { fret ->
             Box(
                 modifier = Modifier
                     .width(CELL_WIDTH)
@@ -236,6 +258,9 @@ private fun FretMarkersRow() {
  * @param onClick Callback invoked when this cell is tapped.
  * @param modifier Optional [Modifier] for sizing.
  */
+/** Size of the scale note indicator dot. */
+private val SCALE_DOT_SIZE = 20.dp
+
 @Composable
 private fun FretCell(
     note: Note,
@@ -243,6 +268,9 @@ private fun FretCell(
     isOpenString: Boolean,
     showNoteNames: Boolean,
     onClick: () -> Unit,
+    isNutOnLeft: Boolean = true,
+    isInScale: Boolean = false,
+    isScaleRoot: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -251,6 +279,8 @@ private fun FretCell(
     val stringColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
     val fretColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
     val nutColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+    val scaleColor = Color(0xFF2196F3).copy(alpha = 0.3f) // light blue
+    val scaleRootColor = Color(0xFF1565C0).copy(alpha = 0.5f) // darker blue
 
     Box(
         modifier = modifier
@@ -263,13 +293,24 @@ private fun FretCell(
                     end = Offset(size.width, size.height / 2),
                     strokeWidth = 2f,
                 )
-                // Draw fret wire on right edge; nut (fret 0) is thicker
-                drawLine(
-                    color = if (isOpenString) nutColor else fretColor,
-                    start = Offset(size.width, 0f),
-                    end = Offset(size.width, size.height),
-                    strokeWidth = if (isOpenString) 4f else 1.5f,
-                )
+                if (isOpenString) {
+                    // Nut: thick line on the side toward the fretted notes
+                    val nutX = if (isNutOnLeft) size.width else 0f
+                    drawLine(
+                        color = nutColor,
+                        start = Offset(nutX, 0f),
+                        end = Offset(nutX, size.height),
+                        strokeWidth = 4f,
+                    )
+                } else {
+                    // Regular fret wire on right edge
+                    drawLine(
+                        color = fretColor,
+                        start = Offset(size.width, 0f),
+                        end = Offset(size.width, size.height),
+                        strokeWidth = 1.5f,
+                    )
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -310,8 +351,27 @@ private fun FretCell(
                 }
             }
             else -> {
-                // Subtle note name for unselected fretted positions
-                if (showNoteNames) {
+                if (isInScale && !isOpenString) {
+                    // Scale overlay dot for unselected positions
+                    Box(
+                        modifier = Modifier
+                            .size(SCALE_DOT_SIZE)
+                            .background(
+                                if (isScaleRoot) scaleRootColor else scaleColor,
+                                CircleShape,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (showNoteNames) {
+                            Text(
+                                text = note.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.9f),
+                            )
+                        }
+                    }
+                } else if (showNoteNames) {
+                    // Subtle note name for unselected fretted positions
                     Text(
                         text = note.name,
                         style = MaterialTheme.typography.labelSmall,

@@ -7,6 +7,7 @@ import com.baijum.ukufretboard.data.ChordFormulas
 import com.baijum.ukufretboard.data.Notes
 import com.baijum.ukufretboard.data.VoicingGenerator
 import com.baijum.ukufretboard.domain.ChordVoicing
+import com.baijum.ukufretboard.domain.Transpose
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,9 @@ class ChordLibraryViewModel : ViewModel() {
 
     /** The tuning used for voicing generation. */
     private val tuning = FretboardViewModel.STANDARD_TUNING
+
+    /** Whether to use flat note names, updated from SettingsViewModel. */
+    private var useFlats: Boolean = false
 
     private val _uiState = MutableStateFlow(
         ChordLibraryUiState().let { initial ->
@@ -106,12 +110,41 @@ class ChordLibraryViewModel : ViewModel() {
     }
 
     /**
+     * Transposes the current root by [semitones] (+1 up, -1 down) and
+     * regenerates voicings.
+     */
+    fun transpose(semitones: Int) {
+        _uiState.update { current ->
+            val newRoot = Transpose.transposePitchClass(current.selectedRoot, semitones)
+            current.copy(
+                selectedRoot = newRoot,
+                voicings = generateVoicings(newRoot, current.selectedFormula),
+            )
+        }
+    }
+
+    /**
      * Returns the display name for the currently selected chord
      * (e.g., "Cm7", "G", "F#dim").
      */
+    /**
+     * Updates the note naming preference and regenerates voicings.
+     */
+    fun setUseFlats(flats: Boolean) {
+        if (useFlats != flats) {
+            useFlats = flats
+            // Regenerate voicings with new note names
+            _uiState.update { current ->
+                current.copy(
+                    voicings = generateVoicings(current.selectedRoot, current.selectedFormula),
+                )
+            }
+        }
+    }
+
     fun currentChordName(): String {
         val state = _uiState.value
-        val rootName = Notes.pitchClassToName(state.selectedRoot)
+        val rootName = Notes.pitchClassToName(state.selectedRoot, useFlats)
         val symbol = state.selectedFormula?.symbol ?: ""
         return "$rootName$symbol"
     }
@@ -122,6 +155,7 @@ class ChordLibraryViewModel : ViewModel() {
             rootPitchClass = rootPitchClass,
             formula = formula,
             tuning = tuning,
+            useFlats = useFlats,
         )
     }
 }
