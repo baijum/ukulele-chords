@@ -153,6 +153,7 @@ private fun ExplorerTabContent(viewModel: FretboardViewModel) {
         // Chord detection result
         ChordResultView(
             detectionResult = uiState.detectionResult,
+            fingerPositions = uiState.fingerPositions,
             modifier = Modifier.fillMaxWidth(),
         )
     }

@@ -34,7 +34,15 @@ data class FretboardUiState(
     val selections: Map<Int, Int?> = mapOf(0 to null, 1 to null, 2 to null, 3 to null),
     val showNoteNames: Boolean = true,
     val detectionResult: ChordDetector.DetectionResult = ChordDetector.DetectionResult.NoSelection,
-)
+) {
+    /**
+     * Human-readable finger position string derived from the current selections.
+     * Format: "0 - 0 - 0 - 3" (one entry per string, "x" for unselected strings).
+     */
+    val fingerPositions: String = selections.entries
+        .sortedBy { it.key }
+        .joinToString(" - ") { (_, fret) -> fret?.toString() ?: "x" }
+}
 
 /**
  * ViewModel that manages the fretboard UI state and chord detection logic.

@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.domain.ChordDetector
 
@@ -24,11 +25,13 @@ import com.baijum.ukufretboard.domain.ChordDetector
  * - **No match**: shows "No exact chord match" with the notes played.
  *
  * @param detectionResult The current [ChordDetector.DetectionResult] to display.
+ * @param fingerPositions A string like "0 - 0 - 0 - 3" showing fret positions per string.
  * @param modifier Optional [Modifier] for layout customization.
  */
 @Composable
 fun ChordResultView(
     detectionResult: ChordDetector.DetectionResult,
+    fingerPositions: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -108,6 +111,17 @@ fun ChordResultView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+
+        // Finger positions (shown for all states except NoSelection)
+        if (detectionResult !is ChordDetector.DetectionResult.NoSelection) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = fingerPositions,
+                style = MaterialTheme.typography.bodyLarge,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
