@@ -75,6 +75,20 @@ class FavoritesRepository(context: Context) {
         }
     }
 
+    /**
+     * Merges the given list of favorites into local storage.
+     * Only adds entries that are not already present (union merge).
+     */
+    fun importAll(favorites: List<FavoriteVoicing>) {
+        val editor = prefs.edit()
+        for (voicing in favorites) {
+            if (!prefs.contains(voicing.key)) {
+                editor.putString(voicing.key, serialize(voicing))
+            }
+        }
+        editor.apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "chord_favorites"
     }

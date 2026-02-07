@@ -1,5 +1,7 @@
 package com.baijum.ukufretboard.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,18 +11,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,53 +41,64 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.baijum.ukufretboard.viewmodel.ChordLibraryViewModel
 import com.baijum.ukufretboard.viewmodel.FavoritesViewModel
 import com.baijum.ukufretboard.viewmodel.FretboardViewModel
 import com.baijum.ukufretboard.viewmodel.SettingsViewModel
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
+import com.baijum.ukufretboard.viewmodel.SyncViewModel
 
-/** Tab index for the interactive fretboard explorer. */
-private const val TAB_EXPLORER = 0
+/** Navigation section indices. */
+private const val NAV_EXPLORER = 0
+private const val NAV_LIBRARY = 1
+private const val NAV_PATTERNS = 2
+private const val NAV_PROGRESSIONS = 3
+private const val NAV_FAVORITES = 4
+private const val NAV_SONGBOOK = 5
 
-/** Tab index for the chord library / lookup. */
-private const val TAB_LIBRARY = 1
+/**
+ * Drawer navigation item metadata.
+ */
+private data class DrawerItem(
+    val index: Int,
+    val label: String,
+    val icon: ImageVector,
+)
 
-/** Tab index for strumming patterns reference. */
-private const val TAB_PATTERNS = 2
-
-/** Tab index for chord progressions. */
-private const val TAB_PROGRESSIONS = 3
-
-/** Tab index for saved favorites. */
-private const val TAB_FAVORITES = 4
-
-/** Tab index for songbook / chord sheets. */
-private const val TAB_SONGBOOK = 5
-
-/** Labels displayed in the tab row. */
-private val TAB_TITLES = listOf("Explorer", "Chords", "Patterns", "Progressions", "Favorites", "Songs")
+/** Items displayed in the navigation drawer. Built lazily inside the composable. */
+private fun drawerItems(): List<DrawerItem> = listOf(
+    DrawerItem(NAV_EXPLORER, "Explorer", Icons.Filled.Home),
+    DrawerItem(NAV_LIBRARY, "Chords", Icons.Filled.Search),
+    DrawerItem(NAV_PATTERNS, "Patterns", Icons.AutoMirrored.Filled.List),
+    DrawerItem(NAV_PROGRESSIONS, "Progressions", Icons.Filled.PlayArrow),
+    DrawerItem(NAV_FAVORITES, "Favorites", Icons.Filled.Favorite),
+    DrawerItem(NAV_SONGBOOK, "Songs", Icons.Filled.Create),
+)
 
 /**
  * Top-level screen composable for the Ukulele Chord Explorer.
  *
- * Contains a [PrimaryTabRow] with two tabs:
- * 1. **Explorer**: the interactive fretboard where users tap to select notes
- *    and the app detects the chord.
- * 2. **Chord Library**: a lookup interface where users select a root note and
- *    chord type to browse playable voicings.
+ * Uses a [ModalNavigationDrawer] to navigate between sections:
+ * Explorer, Chords, Patterns, Progressions, Favorites, and Songs.
  *
- * Both tabs share the same [FretboardViewModel] so that selecting a voicing
- * in the library can load it onto the explorer's fretboard.
+ * A hamburger menu icon in the top app bar opens the drawer.
+ * Both Explorer and Chord Library share the same [FretboardViewModel]
+ * so that selecting a voicing in the library can load it onto the
+ * explorer's fretboard.
  *
  * @param fretboardViewModel The shared [FretboardViewModel] instance.
- * @param libraryViewModel The [ChordLibraryViewModel] for the library tab.
+ * @param libraryViewModel The [ChordLibraryViewModel] for the library section.
  * @param settingsViewModel The shared [SettingsViewModel] for app-wide settings.
+ * @param favoritesViewModel The [FavoritesViewModel] for managing favorites.
+ * @param songbookViewModel The [SongbookViewModel] for managing chord sheets.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,9 +108,19 @@ fun FretboardScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     favoritesViewModel: FavoritesViewModel = viewModel(),
     songbookViewModel: SongbookViewModel = viewModel(),
+    syncViewModel: SyncViewModel = viewModel(),
 ) {
-    var selectedTab by remember { mutableIntStateOf(TAB_EXPLORER) }
+    var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
+
+    // Initialize SyncViewModel with SettingsViewModel reference
+    LaunchedEffect(Unit) {
+        syncViewModel.init(settingsViewModel)
+    }
+
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val items = remember { drawerItems() }
 
     val appSettings by settingsViewModel.settings.collectAsState()
 
@@ -106,106 +140,143 @@ fun FretboardScreen(
         fretboardViewModel.setTuningSettings(appSettings.tuning)
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Ukulele Chord Explorer",
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                },
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Settings",
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            // Tab row (scrollable for 6 tabs)
-            ScrollableTabRow(
-                selectedTabIndex = selectedTab,
-                edgePadding = 8.dp,
-            ) {
-                TAB_TITLES.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(title) },
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text(
+                    text = "Ukulele Chord Explorer",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+                )
+                items.forEach { item ->
+                    NavigationDrawerItem(
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                        selected = selectedSection == item.index,
+                        onClick = {
+                            selectedSection = item.index
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     )
                 }
             }
-
-            // Tab content
-            when (selectedTab) {
-                TAB_EXPLORER -> ExplorerTabContent(
-                    viewModel = fretboardViewModel,
-                    soundEnabled = appSettings.sound.enabled,
-                    leftHanded = appSettings.fretboard.leftHanded,
-                    useFlats = appSettings.display.useFlats,
-                )
-                TAB_LIBRARY -> ChordLibraryTab(
-                    viewModel = libraryViewModel,
-                    onVoicingSelected = { voicing ->
-                        fretboardViewModel.applyVoicing(voicing)
-                        selectedTab = TAB_EXPLORER
-                    },
-                    onVoicingLongPressed = { voicing ->
-                        val state = libraryViewModel.uiState.value
-                        val symbol = state.selectedFormula?.symbol ?: ""
-                        favoritesViewModel.toggleFavorite(
-                            rootPitchClass = state.selectedRoot,
-                            chordSymbol = symbol,
-                            frets = voicing.frets,
+        },
+    ) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = items.firstOrNull { it.index == selectedSection }?.label
+                                ?: "Explorer",
+                            style = MaterialTheme.typography.titleLarge,
                         )
                     },
-                    useFlats = appSettings.display.useFlats,
-                    leftHanded = appSettings.fretboard.leftHanded,
-                )
-                TAB_PATTERNS -> StrumPatternsTab()
-                TAB_FAVORITES -> FavoritesTab(
-                    viewModel = favoritesViewModel,
-                    onVoicingSelected = { voicing ->
-                        fretboardViewModel.applyVoicing(voicing)
-                        selectedTab = TAB_EXPLORER
-                    },
-                    useFlats = appSettings.display.useFlats,
-                    leftHanded = appSettings.fretboard.leftHanded,
-                )
-                TAB_SONGBOOK -> SongbookTab(
-                    viewModel = songbookViewModel,
-                    onChordTapped = { chordName ->
-                        navigateToChord(chordName, libraryViewModel) { selectedTab = TAB_LIBRARY }
-                    },
-                )
-                TAB_PROGRESSIONS -> ProgressionsTab(
-                    useFlats = appSettings.display.useFlats,
-                    onChordTapped = { rootPitchClass, quality ->
-                        // Find the matching formula and load it in the library
-                        libraryViewModel.selectRoot(rootPitchClass)
-                        val formula = com.baijum.ukufretboard.data.ChordFormulas.ALL
-                            .firstOrNull { it.symbol == quality }
-                        if (formula != null) {
-                            libraryViewModel.selectCategory(formula.category)
-                            libraryViewModel.selectFormula(formula)
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(
+                                imageVector = Icons.Filled.Menu,
+                                contentDescription = "Open navigation menu",
+                            )
                         }
-                        selectedTab = TAB_LIBRARY
                     },
+                    actions = {
+                        IconButton(onClick = { showSettings = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Settings",
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
                 )
+            },
+            containerColor = MaterialTheme.colorScheme.background,
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            ) {
+                // Section content
+                when (selectedSection) {
+                    NAV_EXPLORER -> ExplorerTabContent(
+                        viewModel = fretboardViewModel,
+                        soundEnabled = appSettings.sound.enabled,
+                        leftHanded = appSettings.fretboard.leftHanded,
+                        useFlats = appSettings.display.useFlats,
+                    )
+                    NAV_LIBRARY -> ChordLibraryTab(
+                        viewModel = libraryViewModel,
+                        onVoicingSelected = { voicing ->
+                            fretboardViewModel.applyVoicing(voicing)
+                            selectedSection = NAV_EXPLORER
+                        },
+                        onVoicingLongPressed = { voicing ->
+                            val state = libraryViewModel.uiState.value
+                            val symbol = state.selectedFormula?.symbol ?: ""
+                            favoritesViewModel.toggleFavorite(
+                                rootPitchClass = state.selectedRoot,
+                                chordSymbol = symbol,
+                                frets = voicing.frets,
+                            )
+                        },
+                        isFavorite = { voicing ->
+                            val state = libraryViewModel.uiState.value
+                            val symbol = state.selectedFormula?.symbol ?: ""
+                            favoritesViewModel.isFavorite(
+                                rootPitchClass = state.selectedRoot,
+                                chordSymbol = symbol,
+                                frets = voicing.frets,
+                            )
+                        },
+                        onToggleFavorite = { voicing ->
+                            val state = libraryViewModel.uiState.value
+                            val symbol = state.selectedFormula?.symbol ?: ""
+                            favoritesViewModel.toggleFavorite(
+                                rootPitchClass = state.selectedRoot,
+                                chordSymbol = symbol,
+                                frets = voicing.frets,
+                            )
+                        },
+                        useFlats = appSettings.display.useFlats,
+                        leftHanded = appSettings.fretboard.leftHanded,
+                    )
+                    NAV_PATTERNS -> StrumPatternsTab()
+                    NAV_PROGRESSIONS -> ProgressionsTab(
+                        useFlats = appSettings.display.useFlats,
+                        onChordTapped = { rootPitchClass, quality ->
+                            libraryViewModel.selectRoot(rootPitchClass)
+                            val formula = com.baijum.ukufretboard.data.ChordFormulas.ALL
+                                .firstOrNull { it.symbol == quality }
+                            if (formula != null) {
+                                libraryViewModel.selectCategory(formula.category)
+                                libraryViewModel.selectFormula(formula)
+                            }
+                            selectedSection = NAV_LIBRARY
+                        },
+                    )
+                    NAV_FAVORITES -> FavoritesTab(
+                        viewModel = favoritesViewModel,
+                        onVoicingSelected = { voicing ->
+                            fretboardViewModel.applyVoicing(voicing)
+                            selectedSection = NAV_EXPLORER
+                        },
+                        useFlats = appSettings.display.useFlats,
+                        leftHanded = appSettings.fretboard.leftHanded,
+                    )
+                    NAV_SONGBOOK -> SongbookTab(
+                        viewModel = songbookViewModel,
+                        onChordTapped = { chordName ->
+                            navigateToChord(chordName, libraryViewModel) { selectedSection = NAV_LIBRARY }
+                        },
+                    )
+                }
             }
         }
     }
@@ -229,6 +300,7 @@ fun FretboardScreen(
             onFretboardSettingsChange = { newFretboard ->
                 settingsViewModel.updateFretboard { newFretboard }
             },
+            syncViewModel = syncViewModel,
             onDismiss = { showSettings = false },
         )
     }
@@ -279,7 +351,11 @@ private fun ExplorerTabContent(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
         // Scale selector (collapsible)
         ScaleSelector(
             state = uiState.scaleOverlay,
@@ -327,12 +403,18 @@ private fun ExplorerTabContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Chord detection result with play button
+        // Chord detection result with play button and detailed info
+        val fretsList = uiState.selections.entries
+            .sortedBy { it.key }
+            .map { it.value ?: 0 }
+
         ChordResultView(
             detectionResult = uiState.detectionResult,
             fingerPositions = uiState.fingerPositions,
             onPlayChord = viewModel::playChord,
             soundEnabled = soundEnabled,
+            frets = fretsList,
+            useFlats = useFlats,
             modifier = Modifier.fillMaxWidth(),
         )
     }

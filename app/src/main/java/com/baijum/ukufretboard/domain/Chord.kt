@@ -1,5 +1,7 @@
 package com.baijum.ukufretboard.domain
 
+import com.baijum.ukufretboard.data.ChordFormula
+
 /**
  * Represents a successfully detected chord.
  *
@@ -9,12 +11,16 @@ package com.baijum.ukufretboard.domain
  *   (e.g., "Minor", "Dominant 7th", "Major").
  * @property root The root [Note] of the chord — the note that gives the chord its letter name.
  * @property notes All unique [Note]s that make up the chord.
+ * @property matchedFormula The [ChordFormula] that was matched during detection,
+ *   providing access to interval data for display purposes. Null when the chord
+ *   was not detected via formula matching.
  */
 data class ChordResult(
     val name: String,
     val quality: String,
     val root: Note,
     val notes: List<Note>,
+    val matchedFormula: ChordFormula? = null,
 )
 
 /**

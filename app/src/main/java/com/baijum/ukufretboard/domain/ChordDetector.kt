@@ -112,6 +112,7 @@ object ChordDetector {
                             quality = formula.quality,
                             root = rootNote,
                             notes = chordNotes,
+                            matchedFormula = formula,
                         )
                     )
                 }

@@ -1,11 +1,15 @@
 package com.baijum.ukufretboard.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.SharedPreferences
+import androidx.lifecycle.AndroidViewModel
 import com.baijum.ukufretboard.data.AppSettings
 import com.baijum.ukufretboard.data.DisplaySettings
 import com.baijum.ukufretboard.data.FretboardSettings
 import com.baijum.ukufretboard.data.SoundSettings
+import com.baijum.ukufretboard.data.ThemeMode
 import com.baijum.ukufretboard.data.TuningSettings
+import com.baijum.ukufretboard.data.UkuleleTuning
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,12 +22,14 @@ import kotlinx.coroutines.flow.update
  * methods. Designed to be shared across all screens so that settings changes
  * are immediately reflected everywhere.
  *
- * Settings are currently held in memory and reset on app restart.
- * Persistence via DataStore can be added later without changing the public API.
+ * Settings are persisted to SharedPreferences and restored on app restart.
  */
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _settings = MutableStateFlow(AppSettings())
+    private val prefs: SharedPreferences =
+        application.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+
+    private val _settings = MutableStateFlow(loadSettings())
 
     /** Observable stream of the current application settings. */
     val settings: StateFlow<AppSettings> = _settings.asStateFlow()
@@ -42,7 +48,7 @@ class SettingsViewModel : ViewModel() {
      */
     fun updateSound(transform: (SoundSettings) -> SoundSettings) {
         _settings.update { current ->
-            current.copy(sound = transform(current.sound))
+            current.copy(sound = transform(current.sound)).also { saveSettings(it) }
         }
     }
 
@@ -51,7 +57,7 @@ class SettingsViewModel : ViewModel() {
      */
     fun updateDisplay(transform: (DisplaySettings) -> DisplaySettings) {
         _settings.update { current ->
-            current.copy(display = transform(current.display))
+            current.copy(display = transform(current.display)).also { saveSettings(it) }
         }
     }
 
@@ -60,7 +66,7 @@ class SettingsViewModel : ViewModel() {
      */
     fun updateTuning(transform: (TuningSettings) -> TuningSettings) {
         _settings.update { current ->
-            current.copy(tuning = transform(current.tuning))
+            current.copy(tuning = transform(current.tuning)).also { saveSettings(it) }
         }
     }
 
@@ -69,7 +75,86 @@ class SettingsViewModel : ViewModel() {
      */
     fun updateFretboard(transform: (FretboardSettings) -> FretboardSettings) {
         _settings.update { current ->
-            current.copy(fretboard = transform(current.fretboard))
+            current.copy(fretboard = transform(current.fretboard)).also { saveSettings(it) }
         }
+    }
+
+    /**
+     * Replaces all settings with the given [AppSettings].
+     * Used for sync/restore operations.
+     */
+    fun replaceAll(newSettings: AppSettings) {
+        _settings.value = newSettings
+        saveSettings(newSettings)
+    }
+
+    /**
+     * Returns a snapshot of the current settings for export.
+     */
+    fun exportSettings(): AppSettings = _settings.value
+
+    // ── Persistence ─────────────────────────────────────────────────────
+
+    private fun saveSettings(s: AppSettings) {
+        prefs.edit()
+            // Sound
+            .putBoolean(KEY_SOUND_ENABLED, s.sound.enabled)
+            .putInt(KEY_NOTE_DURATION, s.sound.noteDurationMs)
+            .putInt(KEY_STRUM_DELAY, s.sound.strumDelayMs)
+            .putBoolean(KEY_STRUM_DOWN, s.sound.strumDown)
+            .putBoolean(KEY_PLAY_ON_TAP, s.sound.playOnTap)
+            // Display
+            .putBoolean(KEY_USE_FLATS, s.display.useFlats)
+            .putString(KEY_THEME_MODE, s.display.themeMode.name)
+            // Tuning
+            .putString(KEY_TUNING, s.tuning.tuning.name)
+            // Fretboard
+            .putBoolean(KEY_LEFT_HANDED, s.fretboard.leftHanded)
+            .apply()
+    }
+
+    private fun loadSettings(): AppSettings {
+        if (!prefs.contains(KEY_SOUND_ENABLED)) return AppSettings()
+
+        return AppSettings(
+            sound = SoundSettings(
+                enabled = prefs.getBoolean(KEY_SOUND_ENABLED, true),
+                noteDurationMs = prefs.getInt(KEY_NOTE_DURATION, SoundSettings.DEFAULT_NOTE_DURATION_MS),
+                strumDelayMs = prefs.getInt(KEY_STRUM_DELAY, SoundSettings.DEFAULT_STRUM_DELAY_MS),
+                strumDown = prefs.getBoolean(KEY_STRUM_DOWN, true),
+                playOnTap = prefs.getBoolean(KEY_PLAY_ON_TAP, false),
+            ),
+            display = DisplaySettings(
+                useFlats = prefs.getBoolean(KEY_USE_FLATS, false),
+                themeMode = try {
+                    ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)!!)
+                } catch (_: Exception) {
+                    ThemeMode.SYSTEM
+                },
+            ),
+            tuning = TuningSettings(
+                tuning = try {
+                    UkuleleTuning.valueOf(prefs.getString(KEY_TUNING, UkuleleTuning.HIGH_G.name)!!)
+                } catch (_: Exception) {
+                    UkuleleTuning.HIGH_G
+                },
+            ),
+            fretboard = FretboardSettings(
+                leftHanded = prefs.getBoolean(KEY_LEFT_HANDED, false),
+            ),
+        )
+    }
+
+    companion object {
+        private const val PREFS_NAME = "app_settings"
+        private const val KEY_SOUND_ENABLED = "sound_enabled"
+        private const val KEY_NOTE_DURATION = "note_duration_ms"
+        private const val KEY_STRUM_DELAY = "strum_delay_ms"
+        private const val KEY_STRUM_DOWN = "strum_down"
+        private const val KEY_PLAY_ON_TAP = "play_on_tap"
+        private const val KEY_USE_FLATS = "use_flats"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_TUNING = "tuning"
+        private const val KEY_LEFT_HANDED = "left_handed"
     }
 }

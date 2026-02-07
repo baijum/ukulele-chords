@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -19,8 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.domain.ChordDetector
+import com.baijum.ukufretboard.domain.ChordInfo
 
 /**
  * Displays the chord detection result below the fretboard.
@@ -29,13 +32,17 @@ import com.baijum.ukufretboard.domain.ChordDetector
  * - **No selection**: instructional prompt to tap the fretboard.
  * - **Single note**: shows the note name with "Single note selected" label.
  * - **Interval (2 notes)**: shows both notes with "Incomplete chord" label.
- * - **Chord found**: shows chord name, quality, and constituent notes.
+ * - **Chord found**: shows chord name, quality, constituent notes, interval
+ *   breakdown, formula, fingering, and difficulty.
  * - **No match**: shows "No exact chord match" with the notes played.
  *
  * @param detectionResult The current [ChordDetector.DetectionResult] to display.
  * @param fingerPositions A string like "0 - 0 - 0 - 3" showing fret positions per string.
  * @param onPlayChord Callback invoked when the user taps the play/strum button.
  * @param soundEnabled Whether sound playback is enabled. When false, the play button is hidden.
+ * @param frets The raw fret list (4 values, one per string) for computing fingering
+ *   and difficulty. Null when no chord is selected or frets are not available.
+ * @param useFlats Whether to use flat note names for interval display.
  * @param modifier Optional [Modifier] for layout customization.
  */
 @Composable
@@ -44,6 +51,8 @@ fun ChordResultView(
     fingerPositions: String,
     onPlayChord: () -> Unit,
     soundEnabled: Boolean = true,
+    frets: List<Int>? = null,
+    useFlats: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val hasNotes = detectionResult !is ChordDetector.DetectionResult.NoSelection
@@ -93,20 +102,22 @@ fun ChordResultView(
             }
 
             is ChordDetector.DetectionResult.ChordFound -> {
+                val result = detectionResult.result
+
                 ChordHeadlineWithPlay(
-                    text = detectionResult.result.name,
+                    text = result.name,
                     onPlay = onPlayChord,
                     showPlay = soundEnabled,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = detectionResult.result.quality,
+                    text = result.quality,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = detectionResult.result.notes.joinToString(" \u2013 ") { it.name },
+                    text = result.notes.joinToString(" \u2013 ") { it.name },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -138,6 +149,81 @@ fun ChordResultView(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        // Detailed chord info (only for ChordFound with a matched formula)
+        if (detectionResult is ChordDetector.DetectionResult.ChordFound) {
+            val result = detectionResult.result
+            val formula = result.matchedFormula
+            if (formula != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Intervals
+                ChordInfoRow(
+                    label = "Intervals",
+                    value = ChordInfo.buildIntervalBreakdown(
+                        root = result.root,
+                        notes = result.notes,
+                        useFlats = useFlats,
+                    ),
+                )
+
+                // Formula
+                ChordInfoRow(
+                    label = "Formula",
+                    value = ChordInfo.buildFormulaString(formula),
+                )
+
+                // Fingering (requires frets)
+                if (frets != null && frets.size == 4) {
+                    val fingering = ChordInfo.suggestFingering(frets)
+                    ChordInfoRow(
+                        label = "Fingering",
+                        value = ChordInfo.formatFingering(fingering),
+                    )
+
+                    // Difficulty
+                    ChordInfoRow(
+                        label = "Difficulty",
+                        value = ChordInfo.rateDifficulty(frets),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A single row in the chord info section with a bold label and a value.
+ */
+@Composable
+private fun ChordInfoRow(
+    label: String,
+    value: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

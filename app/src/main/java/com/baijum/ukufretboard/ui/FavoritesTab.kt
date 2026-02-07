@@ -1,6 +1,7 @@
 package com.baijum.ukufretboard.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -8,9 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,7 +69,7 @@ fun FavoritesTab(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Browse the Chords tab and long-press a voicing to save it here.",
+                text = "Browse the Chords tab and tap the heart icon on a voicing to save it here.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -82,18 +88,34 @@ fun FavoritesTab(
                 val voicing = viewModel.toChordVoicing(favorite, useFlats)
                 val chordName = Notes.pitchClassToName(favorite.rootPitchClass, useFlats) + favorite.chordSymbol
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = chordName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    )
-                    ChordDiagramPreview(
-                        voicing = voicing,
-                        onClick = { onVoicingSelected(voicing) },
-                        leftHanded = leftHanded,
-                    )
+                Box {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = chordName,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                        ChordDiagramPreview(
+                            voicing = voicing,
+                            onClick = { onVoicingSelected(voicing) },
+                            leftHanded = leftHanded,
+                        )
+                    }
+                    // Remove from favorites button
+                    IconButton(
+                        onClick = { viewModel.removeFavorite(favorite) },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(28.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Remove from favorites",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         }

@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -60,6 +61,15 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/MANIFEST.MF"
+        }
+    }
 }
 
 dependencies {
@@ -73,5 +83,11 @@ dependencies {
     implementation(libs.core.ktx)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
+    implementation(libs.play.services.auth)
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.api.services.drive) {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.ui.tooling)
 }

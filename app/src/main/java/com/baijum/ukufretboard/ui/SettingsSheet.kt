@@ -34,7 +34,7 @@ import com.baijum.ukufretboard.data.UkuleleTuning
 /**
  * A modal bottom sheet displaying all app settings, organized by section.
  *
- * Contains Sound, Display, Tuning, and Fretboard sections.
+ * Contains Sound, Display, Tuning, Fretboard, and Google Drive Sync sections.
  *
  * @param soundSettings The current [SoundSettings] values to display.
  * @param onSoundSettingsChange Callback invoked when the user changes any sound setting.
@@ -44,6 +44,7 @@ import com.baijum.ukufretboard.data.UkuleleTuning
  * @param onTuningSettingsChange Callback invoked when the user changes any tuning setting.
  * @param fretboardSettings The current [FretboardSettings] values to display.
  * @param onFretboardSettingsChange Callback invoked when the user changes any fretboard setting.
+ * @param syncViewModel The [SyncViewModel] for Google Drive sync, or null to hide the sync section.
  * @param onDismiss Callback invoked when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,6 +58,7 @@ fun SettingsSheet(
     onTuningSettingsChange: (TuningSettings) -> Unit,
     fretboardSettings: FretboardSettings,
     onFretboardSettingsChange: (FretboardSettings) -> Unit,
+    syncViewModel: com.baijum.ukufretboard.viewmodel.SyncViewModel? = null,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -108,6 +110,13 @@ fun SettingsSheet(
                 settings = fretboardSettings,
                 onSettingsChange = onFretboardSettingsChange,
             )
+
+            // ── Google Drive Sync section ──
+            if (syncViewModel != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                SyncSection(syncViewModel = syncViewModel)
+            }
         }
     }
 }

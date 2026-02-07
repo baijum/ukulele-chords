@@ -61,6 +61,22 @@ class ChordSheetRepository(context: Context) {
         }
     }
 
+    /**
+     * Merges the given list of chord sheets into local storage.
+     * For each sheet, if it doesn't exist locally it is added.
+     * If it already exists, the version with the latest [ChordSheet.updatedAt] wins.
+     */
+    fun importAll(sheets: List<ChordSheet>) {
+        val editor = prefs.edit()
+        for (sheet in sheets) {
+            val existing = get(sheet.id)
+            if (existing == null || sheet.updatedAt > existing.updatedAt) {
+                editor.putString(sheet.id, serialize(sheet))
+            }
+        }
+        editor.apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "chord_sheets"
         private const val SEPARATOR = "|||"
