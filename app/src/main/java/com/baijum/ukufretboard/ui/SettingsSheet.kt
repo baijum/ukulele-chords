@@ -22,6 +22,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.DisplaySettings
@@ -117,6 +118,11 @@ fun SettingsSheet(
                 HorizontalDivider()
                 SyncSection(syncViewModel = syncViewModel)
             }
+
+            // ── About section ──
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            AboutSection()
         }
     }
 }
@@ -401,6 +407,84 @@ private fun SettingsSlider(
             valueRange = valueRange,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * The About section showing app version and credits.
+ */
+@Composable
+private fun AboutSection() {
+    val context = LocalContext.current
+    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+    val versionName = packageInfo.versionName ?: "Unknown"
+
+    SectionHeader("About")
+
+    // App name and version
+    Text(
+        text = "Uku Fretboard",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = "Version $versionName",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Credits
+    Text(
+        text = "Credits",
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    CreditItem(
+        label = "Audio Samples",
+        value = "\"Ukelele single notes, close-mic\" by stomachache (Freesound.org)",
+    )
+    CreditItem(
+        label = "License",
+        value = "CC BY 3.0",
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Text(
+        text = "An interactive ukulele fretboard chord explorer. " +
+            "Free, offline, no ads, no tracking.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/**
+ * A single credit entry with a label and value.
+ */
+@Composable
+private fun CreditItem(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+    ) {
+        Text(
+            text = "$label: ",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

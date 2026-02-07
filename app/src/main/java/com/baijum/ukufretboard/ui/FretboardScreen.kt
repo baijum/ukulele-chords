@@ -46,9 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import com.baijum.ukufretboard.audio.ToneGenerator
 import com.baijum.ukufretboard.viewmodel.ChordLibraryViewModel
 import com.baijum.ukufretboard.viewmodel.FavoritesViewModel
 import com.baijum.ukufretboard.viewmodel.FretboardViewModel
@@ -118,11 +120,20 @@ fun FretboardScreen(
         syncViewModel.init(settingsViewModel)
     }
 
+    // Initialize sampled audio engine (loads OGG samples into SoundPool)
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        ToneGenerator.init(context)
+    }
+
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val items = remember { drawerItems() }
 
     val appSettings by settingsViewModel.settings.collectAsState()
+
+    // Collect favorites so that isFavorite checks trigger recomposition
+    val currentFavorites by favoritesViewModel.favorites.collectAsState()
 
     // Keep FretboardViewModel in sync with sound settings
     LaunchedEffect(appSettings.sound) {
@@ -226,15 +237,13 @@ fun FretboardScreen(
                                 frets = voicing.frets,
                             )
                         },
-                        isFavorite = { voicing ->
-                            val state = libraryViewModel.uiState.value
-                            val symbol = state.selectedFormula?.symbol ?: ""
-                            favoritesViewModel.isFavorite(
-                                rootPitchClass = state.selectedRoot,
-                                chordSymbol = symbol,
-                                frets = voicing.frets,
-                            )
-                        },
+                    isFavorite = { voicing ->
+                        // Reference currentFavorites to trigger recomposition on change
+                        val state = libraryViewModel.uiState.value
+                        val symbol = state.selectedFormula?.symbol ?: ""
+                        val key = "${state.selectedRoot}|$symbol|${voicing.frets.joinToString(",")}"
+                        currentFavorites.any { it.key == key }
+                    },
                         onToggleFavorite = { voicing ->
                             val state = libraryViewModel.uiState.value
                             val symbol = state.selectedFormula?.symbol ?: ""

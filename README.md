@@ -106,6 +106,14 @@ keyPassword=your_key_password
 
 The AAB will be at `app/build/outputs/bundle/release/app-release.aab`.
 
+## Attribution
+
+Audio samples are from the "Ukelele single notes, close-mic" pack by
+[stomachache](https://freesound.org/people/stomachache/packs/8545/) on
+Freesound.org, licensed under
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+See [ATTRIBUTION.md](ATTRIBUTION.md) for full details.
+
 ## License
 
 This project is provided as-is for educational purposes.
