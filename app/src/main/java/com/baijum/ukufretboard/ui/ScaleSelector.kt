@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.Notes
 import com.baijum.ukufretboard.data.Scale
 import com.baijum.ukufretboard.data.Scales
+import com.baijum.ukufretboard.domain.ScaleChords
 import com.baijum.ukufretboard.viewmodel.ScaleOverlayState
 
 /**
@@ -99,6 +100,42 @@ fun ScaleSelector(
                                 selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
                             ),
                         )
+                    }
+                }
+
+                // Chords in this scale (only shown when a scale is selected)
+                val currentScale = state.scale
+                if (currentScale != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Chords in ${currentScale.name}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+
+                    val diatonicChords = ScaleChords.diatonicTriads(state.root, currentScale)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        diatonicChords.forEach { chord ->
+                            val chordName = ScaleChords.formatChord(chord, useFlats)
+                            FilterChip(
+                                selected = false,
+                                onClick = { },
+                                label = {
+                                    Text(
+                                        text = chordName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
 

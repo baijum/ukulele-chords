@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.domain.ChordDetector
 import com.baijum.ukufretboard.domain.ChordInfo
+import com.baijum.ukufretboard.viewmodel.FretboardViewModel
+import com.baijum.ukufretboard.viewmodel.UkuleleString
 
 /**
  * Displays the chord detection result below the fretboard.
@@ -43,6 +45,7 @@ import com.baijum.ukufretboard.domain.ChordInfo
  * @param frets The raw fret list (4 values, one per string) for computing fingering
  *   and difficulty. Null when no chord is selected or frets are not available.
  * @param useFlats Whether to use flat note names for interval display.
+ * @param tuning The current ukulele tuning, used for inversion detection.
  * @param modifier Optional [Modifier] for layout customization.
  */
 @Composable
@@ -53,6 +56,7 @@ fun ChordResultView(
     soundEnabled: Boolean = true,
     frets: List<Int>? = null,
     useFlats: Boolean = false,
+    tuning: List<UkuleleString> = FretboardViewModel.STANDARD_TUNING,
     modifier: Modifier = Modifier,
 ) {
     val hasNotes = detectionResult !is ChordDetector.DetectionResult.NoSelection
@@ -103,15 +107,38 @@ fun ChordResultView(
 
             is ChordDetector.DetectionResult.ChordFound -> {
                 val result = detectionResult.result
+                val formula = result.matchedFormula
+
+                // Compute inversion if we have frets and a formula
+                val inversion = if (frets != null && frets.size == 4 && formula != null) {
+                    ChordInfo.determineInversion(frets, result.root.pitchClass, formula, tuning)
+                } else {
+                    null
+                }
+
+                // Show chord name with slash notation for inversions
+                val displayName = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) {
+                    val bassPc = ChordInfo.bassPitchClass(frets!!, tuning)
+                    ChordInfo.slashNotation(result.name, inversion, bassPc, useFlats)
+                } else {
+                    result.name
+                }
 
                 ChordHeadlineWithPlay(
-                    text = result.name,
+                    text = displayName,
                     onPlay = onPlayChord,
                     showPlay = soundEnabled,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+
+                // Quality + inversion label
+                val qualityText = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) {
+                    "${result.quality} (${inversion.label})"
+                } else {
+                    result.quality
+                }
                 Text(
-                    text = result.quality,
+                    text = qualityText,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -178,7 +205,7 @@ fun ChordResultView(
                     value = ChordInfo.buildFormulaString(formula),
                 )
 
-                // Fingering (requires frets)
+                // Fingering and inversion (requires frets)
                 if (frets != null && frets.size == 4) {
                     val fingering = ChordInfo.suggestFingering(frets)
                     ChordInfoRow(
@@ -190,6 +217,19 @@ fun ChordResultView(
                     ChordInfoRow(
                         label = "Difficulty",
                         value = ChordInfo.rateDifficulty(frets),
+                    )
+
+                    // Inversion
+                    val detailedInversion = ChordInfo.determineInversion(
+                        frets, result.root.pitchClass, formula, tuning,
+                    )
+                    val bassNoteName = com.baijum.ukufretboard.data.Notes.pitchClassToName(
+                        ChordInfo.bassPitchClass(frets, tuning),
+                        useFlats,
+                    )
+                    ChordInfoRow(
+                        label = "Inversion",
+                        value = "${detailedInversion.label} (bass: $bassNoteName)",
                     )
                 }
             }

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -54,6 +55,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.ChordParser
 import com.baijum.ukufretboard.data.ChordSheet
+import com.baijum.ukufretboard.domain.ChordSheetFormatter
+import com.baijum.ukufretboard.domain.ChordSheetTranspose
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
 
 /**
@@ -199,6 +202,8 @@ private fun SheetViewer(
     onDelete: () -> Unit,
     onChordTapped: (String) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -220,6 +225,16 @@ private fun SheetViewer(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
+            IconButton(onClick = {
+                val formatted = ChordSheetFormatter.formatChordsAboveLyrics(sheet)
+                ChordSheetFormatter.shareText(
+                    context = context,
+                    title = sheet.title.ifEmpty { "Chord Sheet" },
+                    text = formatted,
+                )
+            }) {
+                Icon(Icons.Filled.Share, contentDescription = "Share")
+            }
             IconButton(onClick = onEdit) {
                 Icon(Icons.Filled.Edit, contentDescription = "Edit")
             }
@@ -237,15 +252,55 @@ private fun SheetViewer(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // Transpose controls
+        var transposeSemitones by remember { mutableStateOf(0) }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Transpose:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton(onClick = { transposeSemitones-- }) {
+                Text("\u2212") // minus sign
+            }
+            Text(
+                text = ChordSheetTranspose.semitoneLabel(transposeSemitones),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+            OutlinedButton(onClick = { transposeSemitones++ }) {
+                Text("+")
+            }
+            if (transposeSemitones != 0) {
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = { transposeSemitones = 0 }) {
+                    Text("Reset")
+                }
+            }
+        }
 
-        // Content with tappable chords
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Content with tappable chords (transposed if needed)
+        val displayContent = if (transposeSemitones != 0) {
+            ChordSheetTranspose.transpose(sheet.content, transposeSemitones, useFlats = false)
+        } else {
+            sheet.content
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         ) {
-            sheet.content.lines().forEach { line ->
+            displayContent.lines().forEach { line ->
                 val segments = ChordParser.parseLine(line)
                 if (segments.isEmpty()) {
                     Text(

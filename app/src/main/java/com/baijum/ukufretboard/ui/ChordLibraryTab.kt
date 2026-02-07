@@ -12,23 +12,34 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -37,8 +48,11 @@ import com.baijum.ukufretboard.data.ChordCategory
 import com.baijum.ukufretboard.data.ChordFormula
 import com.baijum.ukufretboard.data.ChordFormulas
 import com.baijum.ukufretboard.data.Notes
+import com.baijum.ukufretboard.domain.CapoCalculator
+import com.baijum.ukufretboard.domain.ChordInfo
 import com.baijum.ukufretboard.domain.ChordVoicing
 import com.baijum.ukufretboard.viewmodel.ChordLibraryViewModel
+import com.baijum.ukufretboard.viewmodel.FretboardViewModel
 
 /**
  * The chord library tab content.
@@ -63,11 +77,23 @@ fun ChordLibraryTab(
     onVoicingLongPressed: ((ChordVoicing) -> Unit)? = null,
     isFavorite: ((ChordVoicing) -> Boolean)? = null,
     onToggleFavorite: ((ChordVoicing) -> Unit)? = null,
+    onPlayVoicing: ((ChordVoicing) -> Unit)? = null,
+    onPlayVoicingsSequentially: ((List<ChordVoicing>) -> Unit)? = null,
     useFlats: Boolean = false,
     leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val tuning = FretboardViewModel.STANDARD_TUNING
+
+    // Inversion filter state: null = show all
+    var inversionFilter by remember { mutableStateOf<ChordInfo.Inversion?>(null) }
+    // Compare mode toggle
+    var compareMode by remember { mutableStateOf(false) }
+    // Capo calculator mode
+    var capoResults by remember { mutableStateOf<List<CapoCalculator.SingleChordResult>?>(null) }
+    // Capo visualizer mode — stores the voicing to visualize
+    var capoVisualVoicing by remember { mutableStateOf<ChordVoicing?>(null) }
 
     Column(
         modifier = modifier
@@ -118,22 +144,160 @@ fun ChordLibraryTab(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Section: Voicing results
-        if (uiState.voicings.isNotEmpty()) {
+        if (uiState.voicings.isNotEmpty() && uiState.selectedFormula != null) {
             val rootName = Notes.pitchClassToName(uiState.selectedRoot, useFlats)
             val symbol = uiState.selectedFormula?.symbol ?: ""
-            SectionLabel("$rootName$symbol — ${uiState.voicings.size} voicings")
-        }
 
-        VoicingGrid(
-            voicings = uiState.voicings,
-            onVoicingSelected = onVoicingSelected,
-            onVoicingLongPressed = onVoicingLongPressed,
-            isFavorite = isFavorite,
-            onToggleFavorite = onToggleFavorite,
-            leftHanded = leftHanded,
-            modifier = Modifier.weight(1f),
-        )
+            if (capoVisualVoicing != null && uiState.selectedFormula != null) {
+                // ── Capo Visualizer mode ──
+                CapoVisualizerView(
+                    voicing = capoVisualVoicing!!,
+                    rootPitchClass = uiState.selectedRoot,
+                    formula = uiState.selectedFormula!!,
+                    tuning = tuning,
+                    useFlats = useFlats,
+                    leftHanded = leftHanded,
+                    onBack = { capoVisualVoicing = null },
+                    modifier = Modifier.weight(1f),
+                )
+            } else if (capoResults != null) {
+                // ── Capo Calculator mode ──
+                CapoCalculatorSingleView(
+                    results = capoResults!!,
+                    onBack = { capoResults = null },
+                    leftHanded = leftHanded,
+                    modifier = Modifier.weight(1f),
+                )
+            } else if (compareMode) {
+                // ── Compare Inversions mode ──
+                SectionLabel("$rootName$symbol — Compare Inversions")
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Group voicings by inversion
+                val grouped = uiState.voicings.groupBy { voicing ->
+                    ChordInfo.determineInversion(
+                        voicing.frets,
+                        uiState.selectedRoot,
+                        uiState.selectedFormula!!,
+                        tuning,
+                    )
+                }
+
+                InversionCompareView(
+                    grouped = grouped,
+                    rootPitchClass = uiState.selectedRoot,
+                    formula = uiState.selectedFormula!!,
+                    onVoicingSelected = onVoicingSelected,
+                    onPlayVoicing = onPlayVoicing,
+                    onPlayAllInversions = onPlayVoicingsSequentially?.let { play ->
+                        {
+                            // Play the best (first) voicing from each inversion group
+                            val bestVoicings = ChordInfo.Inversion.entries
+                                .mapNotNull { inv -> grouped[inv]?.firstOrNull() }
+                            play(bestVoicings)
+                        }
+                    },
+                    leftHanded = leftHanded,
+                    useFlats = useFlats,
+                    onExitCompare = { compareMode = false },
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                // ── Normal grid mode ──
+
+                // Apply inversion filter to voicings
+                val filteredVoicings = if (inversionFilter != null) {
+                    uiState.voicings.filter { voicing ->
+                        ChordInfo.determineInversion(
+                            voicing.frets,
+                            uiState.selectedRoot,
+                            uiState.selectedFormula!!,
+                            tuning,
+                        ) == inversionFilter
+                    }
+                } else {
+                    uiState.voicings
+                }
+
+                SectionLabel("$rootName$symbol — ${filteredVoicings.size} voicings")
+
+                // Inversion filter chips + Compare button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        InversionFilterChips(
+                            selected = inversionFilter,
+                            onSelected = { inversionFilter = it },
+                            hasSeventhIntervals = uiState.selectedFormula?.intervals?.any { it >= 10 } == true,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                val formula = uiState.selectedFormula ?: return@OutlinedButton
+                                capoResults = CapoCalculator.forSingleChord(
+                                    rootPitchClass = uiState.selectedRoot,
+                                    formula = formula,
+                                    tuning = tuning,
+                                    useFlats = useFlats,
+                                )
+                            },
+                        ) {
+                            Text("Capo", style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                // Open visualizer with the first voicing
+                                capoVisualVoicing = filteredVoicings.firstOrNull()
+                            },
+                        ) {
+                            Text("Viz", style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(onClick = { compareMode = true }) {
+                            Text("Compare", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                VoicingGrid(
+                    voicings = filteredVoicings,
+                    onVoicingSelected = onVoicingSelected,
+                    onVoicingLongPressed = onVoicingLongPressed,
+                    isFavorite = isFavorite,
+                    onToggleFavorite = onToggleFavorite,
+                    leftHanded = leftHanded,
+                    rootPitchClass = uiState.selectedRoot,
+                    formula = uiState.selectedFormula,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
+            // No voicings / no formula selected
+            VoicingGrid(
+                voicings = uiState.voicings,
+                onVoicingSelected = onVoicingSelected,
+                onVoicingLongPressed = onVoicingLongPressed,
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
+                leftHanded = leftHanded,
+                rootPitchClass = uiState.selectedRoot,
+                formula = uiState.selectedFormula,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -267,10 +431,201 @@ private fun FormulaSelector(
 }
 
 /**
+ * Emits inversion filter chips inline (no wrapping Row — caller provides the container).
+ *
+ * @param selected The currently selected inversion filter, or null for "All".
+ * @param onSelected Callback when a filter chip is tapped.
+ * @param hasSeventhIntervals Whether to show the "3rd Inv" chip (only for 7th chords).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InversionFilterChips(
+    selected: ChordInfo.Inversion?,
+    onSelected: (ChordInfo.Inversion?) -> Unit,
+    hasSeventhIntervals: Boolean = false,
+) {
+    val options = buildList {
+        add(null to "All")
+        add(ChordInfo.Inversion.ROOT to "Root")
+        add(ChordInfo.Inversion.FIRST to "1st Inv")
+        add(ChordInfo.Inversion.SECOND to "2nd Inv")
+        if (hasSeventhIntervals) {
+            add(ChordInfo.Inversion.THIRD to "3rd Inv")
+        }
+    }
+
+    options.forEach { (inversion, label) ->
+        val isSelected = inversion == selected
+        FilterChip(
+            selected = isSelected,
+            onClick = { onSelected(inversion) },
+            label = {
+                Text(
+                    text = label,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            ),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+    }
+}
+
+/**
+ * Inversion comparison view — groups voicings by inversion type and
+ * displays them in scrollable sections for side-by-side comparison.
+ *
+ * Each section shows the inversion type, bass note, a horizontal row
+ * of voicing cards, and a play button. A "Play All Inversions" button
+ * at the top plays one representative voicing from each inversion
+ * sequentially so users can hear the harmonic difference.
+ */
+@Composable
+private fun InversionCompareView(
+    grouped: Map<ChordInfo.Inversion, List<ChordVoicing>>,
+    rootPitchClass: Int,
+    formula: ChordFormula,
+    onVoicingSelected: (ChordVoicing) -> Unit,
+    onPlayVoicing: ((ChordVoicing) -> Unit)?,
+    onPlayAllInversions: (() -> Unit)?,
+    leftHanded: Boolean,
+    useFlats: Boolean,
+    onExitCompare: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val tuning = FretboardViewModel.STANDARD_TUNING
+
+    // Ordered list of inversions that actually have voicings
+    val availableInversions = ChordInfo.Inversion.entries.filter { grouped.containsKey(it) }
+
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Educational tip + Play All + Back
+        item {
+            Text(
+                text = "Same chord, different bass note. Listen to how each inversion has a distinct character.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (onPlayAllInversions != null && availableInversions.size > 1) {
+                    Button(
+                        onClick = onPlayAllInversions,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Play All Inversions")
+                    }
+                }
+                OutlinedButton(onClick = onExitCompare) {
+                    Text("Back")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        // One section per inversion type
+        availableInversions.forEach { inversion ->
+            val voicings = grouped[inversion] ?: return@forEach
+            val bestVoicing = voicings.first()
+            val bassPc = ChordInfo.bassPitchClass(bestVoicing.frets, tuning)
+            val bassName = Notes.pitchClassToName(bassPc, useFlats)
+
+            item {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Section header: inversion label + bass note + play button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            text = inversion.label,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Bass: $bassName \u2022 ${voicings.size} voicing${if (voicings.size > 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (onPlayVoicing != null) {
+                        IconButton(onClick = { onPlayVoicing(bestVoicing) }) {
+                            Icon(
+                                imageVector = Icons.Filled.PlayArrow,
+                                contentDescription = "Play ${inversion.label}",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+
+            // Horizontal scrollable row of voicing cards
+            item {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(voicings) { voicing ->
+                        val bassIndex = ChordInfo.findBassStringIndex(voicing.frets, tuning)
+                        ChordDiagramPreview(
+                            voicing = voicing,
+                            onClick = { onVoicingSelected(voicing) },
+                            leftHanded = leftHanded,
+                            inversionLabel = null, // Already shown in section header
+                            bassStringIndex = bassIndex,
+                            modifier = Modifier.width(160.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // Handle case: only root position
+        if (availableInversions.size == 1) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "This chord only has ${availableInversions.first().label.lowercase()} voicings in standard tuning.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
  * Grid of mini chord diagram cards, 2 columns wide.
  *
  * Each card shows a chord diagram with an optional heart icon for
- * toggling favorites.
+ * toggling favorites. When [rootPitchClass] and [formula] are provided,
+ * each voicing is labeled with its inversion type and the bass note is highlighted.
  */
 @Composable
 private fun VoicingGrid(
@@ -280,8 +635,12 @@ private fun VoicingGrid(
     isFavorite: ((ChordVoicing) -> Boolean)? = null,
     onToggleFavorite: ((ChordVoicing) -> Unit)? = null,
     leftHanded: Boolean = false,
+    rootPitchClass: Int = 0,
+    formula: ChordFormula? = null,
     modifier: Modifier = Modifier,
 ) {
+    val tuning = FretboardViewModel.STANDARD_TUNING
+
     if (voicings.isEmpty()) {
         Column(
             modifier = modifier
@@ -304,12 +663,22 @@ private fun VoicingGrid(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(voicings) { voicing ->
+                // Compute inversion info for this voicing
+                val inversionLabel = formula?.let {
+                    ChordInfo.determineInversion(voicing.frets, rootPitchClass, it, tuning).label
+                }
+                val bassIndex = formula?.let {
+                    ChordInfo.findBassStringIndex(voicing.frets, tuning)
+                }
+
                 Box {
                     ChordDiagramPreview(
                         voicing = voicing,
                         onClick = { onVoicingSelected(voicing) },
                         onLongClick = onVoicingLongPressed?.let { callback -> { callback(voicing) } },
                         leftHanded = leftHanded,
+                        inversionLabel = inversionLabel,
+                        bassStringIndex = bassIndex,
                     )
                     // Heart icon overlay in the top-end corner
                     if (onToggleFavorite != null) {

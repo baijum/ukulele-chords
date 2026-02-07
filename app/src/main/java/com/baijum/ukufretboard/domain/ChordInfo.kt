@@ -2,6 +2,7 @@ package com.baijum.ukufretboard.domain
 
 import com.baijum.ukufretboard.data.ChordFormula
 import com.baijum.ukufretboard.data.Notes
+import com.baijum.ukufretboard.viewmodel.UkuleleString
 
 /**
  * Utility functions for computing detailed chord information —
@@ -182,5 +183,116 @@ object ChordInfo {
 
         // Wide span or high fret positions
         return "Hard"
+    }
+
+    // ── Inversion detection ─────────────────────────────────────────────
+
+    /**
+     * Possible chord inversions.
+     *
+     * @property label Short label for display in badges and info rows.
+     */
+    enum class Inversion(val label: String) {
+        ROOT("Root"),
+        FIRST("1st Inv"),
+        SECOND("2nd Inv"),
+        THIRD("3rd Inv"),
+    }
+
+    /**
+     * Finds the index of the string that produces the lowest-pitched note
+     * in a voicing, accounting for re-entrant tuning.
+     *
+     * The actual MIDI-like pitch is computed as:
+     *     pitch = octave * 12 + pitchClass + fret
+     *
+     * This correctly handles the re-entrant G4 string being higher in pitch
+     * than the C4 string.
+     *
+     * @param frets A list of 4 fret numbers (one per string, G-C-E-A order).
+     * @param tuning The current tuning (provides open pitch class and octave per string).
+     * @return The string index (0–3) of the bass note.
+     */
+    fun findBassStringIndex(frets: List<Int>, tuning: List<UkuleleString>): Int {
+        return frets.indices.minByOrNull { i ->
+            val string = tuning[i]
+            string.octave * Notes.PITCH_CLASS_COUNT + string.openPitchClass + frets[i]
+        } ?: 0
+    }
+
+    /**
+     * Computes the pitch class of the bass (lowest-pitched) note in a voicing.
+     *
+     * @param frets A list of 4 fret numbers (one per string, G-C-E-A order).
+     * @param tuning The current tuning.
+     * @return The pitch class (0–11) of the lowest note.
+     */
+    fun bassPitchClass(frets: List<Int>, tuning: List<UkuleleString>): Int {
+        val bassIndex = findBassStringIndex(frets, tuning)
+        val string = tuning[bassIndex]
+        return (string.openPitchClass + frets[bassIndex]) % Notes.PITCH_CLASS_COUNT
+    }
+
+    /**
+     * Determines the inversion of a chord voicing.
+     *
+     * Computes the interval between the bass note and the chord root, then
+     * checks which chord tone (root, 3rd, 5th, or 7th) occupies the bass.
+     *
+     * @param frets A list of 4 fret numbers (one per string, G-C-E-A order).
+     * @param rootPitchClass The pitch class of the chord root.
+     * @param formula The chord formula (provides the interval set).
+     * @param tuning The current tuning.
+     * @return The [Inversion] type, or [Inversion.ROOT] if the bass note is the root.
+     */
+    fun determineInversion(
+        frets: List<Int>,
+        rootPitchClass: Int,
+        formula: ChordFormula,
+        tuning: List<UkuleleString>,
+    ): Inversion {
+        val bassPc = bassPitchClass(frets, tuning)
+        val interval = (bassPc - rootPitchClass + Notes.PITCH_CLASS_COUNT) % Notes.PITCH_CLASS_COUNT
+
+        if (interval == 0) return Inversion.ROOT
+
+        // Check if bass interval is a 3rd (minor 3rd = 3, major 3rd = 4)
+        if (interval == 3 || interval == 4) return Inversion.FIRST
+
+        // Check if bass interval is a 5th (diminished 5th = 6, perfect 5th = 7, augmented 5th = 8)
+        if (interval == 6 || interval == 7 || interval == 8) return Inversion.SECOND
+
+        // Check if bass interval is a 7th (minor 7th = 10, major 7th = 11)
+        // Only valid for 7th chords (formula has intervals beyond the triad)
+        if ((interval == 10 || interval == 11) && formula.intervals.any { it >= 10 }) {
+            return Inversion.THIRD
+        }
+
+        // Fallback: if interval is in the formula but not a standard inversion,
+        // treat as root position (e.g., sus2 with 2nd in bass)
+        return Inversion.ROOT
+    }
+
+    /**
+     * Returns slash notation for a chord with its bass note.
+     *
+     * Example: for C major with E in the bass, returns "C/E".
+     * Returns just the chord name if it's root position.
+     *
+     * @param chordName The chord name (e.g., "C", "Am7").
+     * @param inversion The detected inversion.
+     * @param bassPc The pitch class of the bass note.
+     * @param useFlats Whether to use flat note names.
+     * @return The chord name with optional slash bass notation.
+     */
+    fun slashNotation(
+        chordName: String,
+        inversion: Inversion,
+        bassPc: Int,
+        useFlats: Boolean = false,
+    ): String {
+        if (inversion == Inversion.ROOT) return chordName
+        val bassName = Notes.pitchClassToName(bassPc, useFlats)
+        return "$chordName/$bassName"
     }
 }

@@ -48,22 +48,24 @@ object Progressions {
 
     // ── Major scale degrees ──
     // I=0, ii=2, iii=4, IV=5, V=7, vi=9, vii°=11
-    private val I   = ChordDegree(0,  "",    "I")
-    private val ii  = ChordDegree(2,  "m",   "ii")
-    private val iii = ChordDegree(4,  "m",   "iii")
-    private val IV  = ChordDegree(5,  "",    "IV")
-    private val V   = ChordDegree(7,  "",    "V")
-    private val vi  = ChordDegree(9,  "m",   "vi")
+    private val I      = ChordDegree(0,  "",    "I")
+    private val ii     = ChordDegree(2,  "m",   "ii")
+    private val iii    = ChordDegree(4,  "m",   "iii")
+    private val IV     = ChordDegree(5,  "",    "IV")
+    private val V      = ChordDegree(7,  "",    "V")
+    private val vi     = ChordDegree(9,  "m",   "vi")
+    private val viiDim = ChordDegree(11, "dim", "vii\u00B0")
 
     // ── Minor scale degrees ──
     // i=0, ii°=2, III=3, iv=5, v=7, VI=8, VII=10
-    private val i_m   = ChordDegree(0,  "m",   "i")
-    private val III_m = ChordDegree(3,  "",    "III")
-    private val iv_m  = ChordDegree(5,  "m",   "iv")
-    private val v_m   = ChordDegree(7,  "m",   "v")
-    private val V_m   = ChordDegree(7,  "",    "V")   // harmonic minor dominant
-    private val VI_m  = ChordDegree(8,  "",    "VI")
-    private val VII_m = ChordDegree(10, "",    "VII")
+    private val i_m     = ChordDegree(0,  "m",   "i")
+    private val iiDim_m = ChordDegree(2,  "dim", "ii\u00B0")
+    private val III_m   = ChordDegree(3,  "",    "III")
+    private val iv_m    = ChordDegree(5,  "m",   "iv")
+    private val v_m     = ChordDegree(7,  "m",   "v")
+    private val V_m     = ChordDegree(7,  "",    "V")   // harmonic minor dominant
+    private val VI_m    = ChordDegree(8,  "",    "VI")
+    private val VII_m   = ChordDegree(10, "",    "VII")
 
     val MAJOR_PROGRESSIONS: List<Progression> = listOf(
         Progression(
@@ -141,5 +143,14 @@ object Progressions {
     fun forScale(scaleType: ScaleType): List<Progression> = when (scaleType) {
         ScaleType.MAJOR -> MAJOR_PROGRESSIONS
         ScaleType.MINOR -> MINOR_PROGRESSIONS
+    }
+
+    /**
+     * Returns the diatonic chord degrees for a scale type.
+     * Used by the custom progression builder to show available chords.
+     */
+    fun diatonicDegrees(scaleType: ScaleType): List<ChordDegree> = when (scaleType) {
+        ScaleType.MAJOR -> listOf(I, ii, iii, IV, V, vi, viiDim)
+        ScaleType.MINOR -> listOf(i_m, iiDim_m, III_m, iv_m, v_m, V_m, VI_m, VII_m)
     }
 }

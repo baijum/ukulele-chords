@@ -17,13 +17,24 @@ data class Scale(
 object Scales {
 
     val ALL: List<Scale> = listOf(
+        // ── Diatonic scales ──
         Scale("Major",             listOf(0, 2, 4, 5, 7, 9, 11)),
         Scale("Natural Minor",     listOf(0, 2, 3, 5, 7, 8, 10)),
+        Scale("Harmonic Minor",    listOf(0, 2, 3, 5, 7, 8, 11)),
+        Scale("Melodic Minor",     listOf(0, 2, 3, 5, 7, 9, 11)),
+        // ── Pentatonic & Blues ──
         Scale("Pentatonic Major",  listOf(0, 2, 4, 7, 9)),
         Scale("Pentatonic Minor",  listOf(0, 3, 5, 7, 10)),
         Scale("Blues",             listOf(0, 3, 5, 6, 7, 10)),
+        // ── Modes ──
         Scale("Dorian",            listOf(0, 2, 3, 5, 7, 9, 10)),
+        Scale("Phrygian",          listOf(0, 1, 3, 5, 7, 8, 10)),
+        Scale("Lydian",            listOf(0, 2, 4, 6, 7, 9, 11)),
         Scale("Mixolydian",        listOf(0, 2, 4, 5, 7, 9, 10)),
+        Scale("Locrian",           listOf(0, 1, 3, 5, 6, 8, 10)),
+        // ── Symmetric scales ──
+        Scale("Whole Tone",        listOf(0, 2, 4, 6, 8, 10)),
+        Scale("Chromatic",         listOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
     )
 
     /**

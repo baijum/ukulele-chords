@@ -26,19 +26,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.domain.Note
 import com.baijum.ukufretboard.viewmodel.FretboardViewModel
 import com.baijum.ukufretboard.viewmodel.UkuleleString
 
-/** Width of each fret cell — large enough for comfortable touch targets. */
-private val CELL_WIDTH = 48.dp
+/** Default width of each fret cell — large enough for comfortable touch targets. */
+internal val CELL_WIDTH = 48.dp
 
-/** Height of each fret cell — one per string row. */
-private val CELL_HEIGHT = 48.dp
+/** Default height of each fret cell — one per string row. */
+internal val CELL_HEIGHT = 48.dp
 
 /** Width of the fixed string label column on the left. */
-private val LABEL_WIDTH = 36.dp
+internal val FRETBOARD_LABEL_WIDTH = 36.dp
 
 /** Height of the fret number row at the top. */
 private val FRET_NUMBER_HEIGHT = 24.dp
@@ -83,6 +84,10 @@ private const val DOUBLE_MARKER_FRET = 12
  * @param showNoteNames Whether to display note names inside fret cells.
  * @param onFretTap Callback invoked when a fret cell is tapped, with (stringIndex, fret).
  * @param getNoteAt Function to compute the [Note] at a given string/fret position.
+ * @param cellWidth Override the fret cell width (defaults to [CELL_WIDTH]).
+ * @param cellHeight Override the fret cell height (defaults to [CELL_HEIGHT]).
+ * @param scrollable Whether the fretboard scrolls horizontally (defaults to true).
+ *   Set to false in full-screen landscape mode where cells are sized to fit.
  * @param modifier Optional [Modifier] for the root layout.
  */
 @Composable
@@ -95,6 +100,9 @@ fun FretboardView(
     leftHanded: Boolean = false,
     scaleNotes: Set<Int> = emptySet(),
     scaleRoot: Int? = null,
+    cellWidth: Dp = CELL_WIDTH,
+    cellHeight: Dp = CELL_HEIGHT,
+    scrollable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -115,8 +123,8 @@ fun FretboardView(
             tuning.forEach { string ->
                 Box(
                     modifier = Modifier
-                        .width(LABEL_WIDTH)
-                        .height(CELL_HEIGHT),
+                        .width(FRETBOARD_LABEL_WIDTH)
+                        .height(cellHeight),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -129,10 +137,14 @@ fun FretboardView(
             }
         }
 
-        // Horizontally scrollable fretboard area
+        // Fretboard area — scrollable or fixed depending on mode
+        val fretboardModifier = if (scrollable) {
+            Modifier.horizontalScroll(scrollState)
+        } else {
+            Modifier
+        }
         Column(
-            modifier = Modifier
-                .horizontalScroll(scrollState)
+            modifier = fretboardModifier
                 .background(
                     if (isSystemInDarkTheme()) FretboardBackgroundDark else FretboardBackgroundLight,
                     RoundedCornerShape(8.dp),
@@ -140,10 +152,10 @@ fun FretboardView(
                 .padding(end = 4.dp),
         ) {
             // Fret numbers row
-            FretNumbersRow(fretRange = fretRange)
+            FretNumbersRow(fretRange = fretRange, cellWidth = cellWidth)
 
             // Position markers row (dots at frets 5, 7, 10, 12)
-            FretMarkersRow(fretRange = fretRange)
+            FretMarkersRow(fretRange = fretRange, cellWidth = cellWidth)
 
             // String rows with fret cells
             tuning.forEachIndexed { stringIndex, _ ->
@@ -161,7 +173,7 @@ fun FretboardView(
                             isNutOnLeft = !leftHanded,
                             isInScale = inScale,
                             isScaleRoot = isScaleRoot,
-                            modifier = Modifier.size(CELL_WIDTH, CELL_HEIGHT),
+                            modifier = Modifier.size(cellWidth, cellHeight),
                         )
                     }
                 }
@@ -174,12 +186,12 @@ fun FretboardView(
  * Row of fret numbers (0–12) displayed above the fretboard grid.
  */
 @Composable
-private fun FretNumbersRow(fretRange: List<Int>) {
+private fun FretNumbersRow(fretRange: List<Int>, cellWidth: Dp = CELL_WIDTH) {
     Row {
         fretRange.forEach { fret ->
             Box(
                 modifier = Modifier
-                    .width(CELL_WIDTH)
+                    .width(cellWidth)
                     .height(FRET_NUMBER_HEIGHT),
                 contentAlignment = Alignment.Center,
             ) {
@@ -200,14 +212,14 @@ private fun FretNumbersRow(fretRange: List<Int>) {
  * A double dot appears at fret 12 (the octave).
  */
 @Composable
-private fun FretMarkersRow(fretRange: List<Int>) {
+private fun FretMarkersRow(fretRange: List<Int>, cellWidth: Dp = CELL_WIDTH) {
     val markerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
 
     Row {
         fretRange.forEach { fret ->
             Box(
                 modifier = Modifier
-                    .width(CELL_WIDTH)
+                    .width(cellWidth)
                     .height(MARKER_HEIGHT),
                 contentAlignment = Alignment.Center,
             ) {

@@ -336,6 +336,66 @@ class FretboardViewModel : ViewModel() {
     }
 
     /**
+     * Plays a specific [ChordVoicing] as a strummed chord.
+     *
+     * Used by the Chord Library's compare/preview features to audition
+     * a voicing without applying it to the fretboard.
+     *
+     * @param voicing The voicing to play.
+     */
+    fun playVoicing(voicing: com.baijum.ukufretboard.domain.ChordVoicing) {
+        if (!soundSettings.enabled) return
+
+        val notes = voicing.frets.mapIndexed { index, fret ->
+            val string = tuning[index]
+            val pitchClass = (string.openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
+            val octave = computeOctave(string.openPitchClass, string.octave, fret)
+            pitchClass to octave
+        }
+
+        viewModelScope.launch {
+            ToneGenerator.playChord(
+                notes = notes,
+                noteDurationMs = soundSettings.noteDurationMs,
+                strumDelayMs = soundSettings.strumDelayMs,
+            )
+        }
+    }
+
+    /**
+     * Plays a list of voicings sequentially with a pause between each.
+     *
+     * Used by the "Play All Inversions" feature to let users hear
+     * how the same chord sounds in different inversions.
+     *
+     * @param voicings The voicings to play in order.
+     * @param pauseMs Pause between voicings in milliseconds.
+     */
+    fun playVoicingsSequentially(
+        voicings: List<com.baijum.ukufretboard.domain.ChordVoicing>,
+        pauseMs: Long = 1000L,
+    ) {
+        if (!soundSettings.enabled || voicings.isEmpty()) return
+
+        viewModelScope.launch {
+            voicings.forEach { voicing ->
+                val notes = voicing.frets.mapIndexed { index, fret ->
+                    val string = tuning[index]
+                    val pitchClass = (string.openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
+                    val octave = computeOctave(string.openPitchClass, string.octave, fret)
+                    pitchClass to octave
+                }
+                ToneGenerator.playChord(
+                    notes = notes,
+                    noteDurationMs = soundSettings.noteDurationMs,
+                    strumDelayMs = soundSettings.strumDelayMs,
+                )
+                kotlinx.coroutines.delay(pauseMs)
+            }
+        }
+    }
+
+    /**
      * Plays a single note at the given string and fret position.
      *
      * Used by the play-on-tap feature. Note duration is taken from [soundSettings].
@@ -347,6 +407,25 @@ class FretboardViewModel : ViewModel() {
         val string = tuning[stringIndex]
         val pitchClass = (string.openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
         val octave = computeOctave(string.openPitchClass, string.octave, fret)
+        viewModelScope.launch {
+            ToneGenerator.playNote(
+                pitchClass = pitchClass,
+                octave = octave,
+                durationMs = soundSettings.noteDurationMs,
+            )
+        }
+    }
+
+    /**
+     * Plays a single note by pitch class (for melody notepad and interval trainer).
+     *
+     * Uses octave 4 (middle C octave) by default.
+     *
+     * @param pitchClass The pitch class (0–11).
+     * @param octave The octave (default 4).
+     */
+    fun playMelodyNote(pitchClass: Int, octave: Int = 4) {
+        if (!soundSettings.enabled) return
         viewModelScope.launch {
             ToneGenerator.playNote(
                 pitchClass = pitchClass,
