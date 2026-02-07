@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DrawerValue
@@ -42,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -103,7 +105,7 @@ private fun drawerItems(): List<DrawerItem> = listOf(
 )
 
 /**
- * Top-level screen composable for the Ukulele Chord Explorer.
+ * Top-level screen composable for Ukulele Companion.
  *
  * Uses a [ModalNavigationDrawer] to navigate between sections:
  * Explorer, Chords, Patterns, Progressions, Favorites, and Songs.
@@ -132,7 +134,7 @@ fun FretboardScreen(
 ) {
     var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
-    var showFullScreen by remember { mutableStateOf(false) }
+    var showFullScreen by rememberSaveable { mutableStateOf(false) }
 
     // Initialize SyncViewModel with SettingsViewModel reference
     LaunchedEffect(Unit) {
@@ -190,7 +192,7 @@ fun FretboardScreen(
         drawerContent = {
             ModalDrawerSheet {
                 Text(
-                    text = "Ukulele Chord Explorer",
+                    text = "Ukulele Companion",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
                 )
@@ -489,8 +491,11 @@ private fun ExplorerTabContent(
             OutlinedButton(onClick = viewModel::toggleScaleOverlay) {
                 Text(if (uiState.scaleOverlay.enabled) "Hide Scale" else "Scales")
             }
-            OutlinedButton(onClick = onFullScreen) {
-                Text("Full Screen")
+            IconButton(onClick = onFullScreen) {
+                Icon(
+                    imageVector = Icons.Filled.Fullscreen,
+                    contentDescription = "Full Screen",
+                )
             }
         }
 

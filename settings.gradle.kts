@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "UkuFretboard"
+rootProject.name = "UkuleleCompanion"
 include(":app")

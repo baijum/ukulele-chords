@@ -49,7 +49,7 @@ The app uses Material3 theming via `Theme.kt`. Jetpack Compose and Material3 pro
 2. **Theme selection logic**:
    ```kotlin
    @Composable
-   fun UkuFretboardTheme(
+   fun UkuleleCompanionTheme(
        themeMode: ThemeMode = ThemeMode.SYSTEM,
        content: @Composable () -> Unit,
    ) {

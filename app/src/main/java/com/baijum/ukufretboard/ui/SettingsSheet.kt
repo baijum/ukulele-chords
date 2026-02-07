@@ -424,7 +424,7 @@ private fun AboutSection() {
 
     // App name and version
     Text(
-        text = "Uku Fretboard",
+        text = "Ukulele Companion",
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
@@ -458,8 +458,8 @@ private fun AboutSection() {
     Spacer(modifier = Modifier.height(16.dp))
 
     Text(
-        text = "An interactive ukulele fretboard chord explorer. " +
-            "Free, offline, no ads, no tracking.",
+        text = "Your all-in-one ukulele companion for chords, scales, " +
+            "music theory, and composition. Free, offline, no ads, no tracking.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

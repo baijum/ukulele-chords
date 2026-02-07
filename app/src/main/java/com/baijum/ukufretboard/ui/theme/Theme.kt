@@ -91,7 +91,7 @@ private val AppTypography = Typography(
 )
 
 /**
- * App theme for the Ukulele Chord Explorer.
+ * App theme for Ukulele Companion.
  *
  * Uses a warm, calm color palette suitable for an educational tool,
  * with teal primary accents and wood-inspired neutral tones.
@@ -99,7 +99,7 @@ private val AppTypography = Typography(
  * @param themeMode Controls whether to use Light, Dark, or System theme.
  */
 @Composable
-fun UkuFretboardTheme(
+fun UkuleleCompanionTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit,
 ) {

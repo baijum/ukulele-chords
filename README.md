@@ -1,6 +1,6 @@
-# Ukulele Chord Explorer
+# Ukulele Companion
 
-A free, offline, ad-free Android app for exploring ukulele chords, scales, progressions, and more. Built with **Kotlin** and **Jetpack Compose**.
+A free, offline, ad-free Android app for learning ukulele — chords, scales, music theory, composition tools, and more. Built with **Kotlin** and **Jetpack Compose**.
 
 ## Features
 

@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Ukulele Chord Explorer</string>
+    <string name="app_name">Ukulele Companion</string>
     <string name="widget_description">Displays a new ukulele chord each day</string>
 </resources>

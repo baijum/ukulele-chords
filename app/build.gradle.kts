@@ -28,8 +28,8 @@ android {
         applicationId = "com.baijum.ukufretboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "3.0"
+        versionCode = 15
+        versionName = "3.2"
     }
 
     signingConfigs {
@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.ui.graphics)
     implementation(libs.ui.tooling.preview)
     implementation(libs.material3)
+    implementation(libs.material.icons.extended)
     implementation(libs.core.ktx)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)

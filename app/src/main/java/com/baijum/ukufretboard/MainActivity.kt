@@ -8,11 +8,11 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.baijum.ukufretboard.ui.FretboardScreen
-import com.baijum.ukufretboard.ui.theme.UkuFretboardTheme
+import com.baijum.ukufretboard.ui.theme.UkuleleCompanionTheme
 import com.baijum.ukufretboard.viewmodel.SettingsViewModel
 
 /**
- * Single-activity entry point for the Ukulele Chord Explorer app.
+ * Single-activity entry point for the Ukulele Companion app.
  *
  * Sets up edge-to-edge display and applies the app theme before
  * rendering the main [FretboardScreen].
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val appSettings by settingsViewModel.settings.collectAsState()
-            UkuFretboardTheme(themeMode = appSettings.display.themeMode) {
+            UkuleleCompanionTheme(themeMode = appSettings.display.themeMode) {
                 FretboardScreen(settingsViewModel = settingsViewModel)
             }
         }
