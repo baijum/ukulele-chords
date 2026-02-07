@@ -1,4 +1,4 @@
-package com.example.ukufretboard.ui
+package com.baijum.ukufretboard.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.ukufretboard.domain.ChordDetector
+import com.baijum.ukufretboard.domain.ChordDetector
 
 /**
  * Displays the chord detection result below the fretboard.

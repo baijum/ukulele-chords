@@ -1,11 +1,11 @@
-package com.example.ukufretboard
+package com.baijum.ukufretboard
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.ukufretboard.ui.FretboardScreen
-import com.example.ukufretboard.ui.theme.UkuFretboardTheme
+import com.baijum.ukufretboard.ui.FretboardScreen
+import com.baijum.ukufretboard.ui.theme.UkuFretboardTheme
 
 /**
  * Single-activity entry point for the Ukulele Chord Explorer app.

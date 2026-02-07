@@ -1,7 +1,7 @@
-package com.example.ukufretboard.domain
+package com.baijum.ukufretboard.domain
 
-import com.example.ukufretboard.data.ChordFormulas
-import com.example.ukufretboard.data.Notes
+import com.baijum.ukufretboard.data.ChordFormulas
+import com.baijum.ukufretboard.data.Notes
 
 /**
  * Detects chords from a set of pitch classes using interval matching.

@@ -1,4 +1,4 @@
-package com.example.ukufretboard.data
+package com.baijum.ukufretboard.data
 
 /**
  * Mapping of pitch class integers (0–11) to their human-readable note names.

@@ -1,10 +1,10 @@
-package com.example.ukufretboard.viewmodel
+package com.baijum.ukufretboard.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.example.ukufretboard.data.Notes
-import com.example.ukufretboard.domain.ChordDetector
-import com.example.ukufretboard.domain.Note
-import com.example.ukufretboard.domain.calculateNote
+import com.baijum.ukufretboard.data.Notes
+import com.baijum.ukufretboard.domain.ChordDetector
+import com.baijum.ukufretboard.domain.Note
+import com.baijum.ukufretboard.domain.calculateNote
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -121,6 +121,26 @@ class FretboardViewModel : ViewModel() {
     fun clearAll() {
         _uiState.update {
             FretboardUiState(showNoteNames = it.showNoteNames)
+        }
+    }
+
+    /**
+     * Applies a chord voicing from the chord library onto the fretboard.
+     *
+     * Sets each string's fret selection to the voicing's fret values and
+     * re-runs chord detection on the resulting selection.
+     *
+     * @param voicing The [ChordVoicing] to apply (one fret per string).
+     */
+    fun applyVoicing(voicing: com.baijum.ukufretboard.domain.ChordVoicing) {
+        _uiState.update { current ->
+            val newSelections = voicing.frets.mapIndexed { i, fret ->
+                i to (if (fret < 0) null else fret)
+            }.toMap()
+            current.copy(
+                selections = newSelections,
+                detectionResult = detectChord(newSelections),
+            )
         }
     }
 

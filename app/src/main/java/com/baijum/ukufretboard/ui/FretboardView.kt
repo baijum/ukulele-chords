@@ -1,4 +1,4 @@
-package com.example.ukufretboard.ui
+package com.baijum.ukufretboard.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,9 +26,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.ukufretboard.domain.Note
-import com.example.ukufretboard.viewmodel.FretboardViewModel
-import com.example.ukufretboard.viewmodel.UkuleleString
+import com.baijum.ukufretboard.domain.Note
+import com.baijum.ukufretboard.viewmodel.FretboardViewModel
+import com.baijum.ukufretboard.viewmodel.UkuleleString
 
 /** Width of each fret cell — large enough for comfortable touch targets. */
 private val CELL_WIDTH = 48.dp

@@ -1,6 +1,6 @@
-package com.example.ukufretboard.domain
+package com.baijum.ukufretboard.domain
 
-import com.example.ukufretboard.data.Notes
+import com.baijum.ukufretboard.data.Notes
 
 /**
  * Represents a musical note identified by its pitch class.
