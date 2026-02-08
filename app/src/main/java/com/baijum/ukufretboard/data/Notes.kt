@@ -30,6 +30,18 @@ object Notes {
     )
 
     /**
+     * Standard note names using the most common enharmonic spelling for
+     * each accidental in popular music and education.
+     *
+     * Sharps for C# and F#; flats for Eb, Ab, and Bb.
+     * Used as the default when no musical key context is available.
+     */
+    val NOTE_NAMES_STANDARD: List<String> = listOf(
+        "C", "C#", "D", "Eb", "E", "F",
+        "F#", "G", "Ab", "A", "Bb", "B"
+    )
+
+    /**
      * Alias for [NOTE_NAMES_SHARP] to maintain backward compatibility.
      */
     val NOTE_NAMES: List<String> = NOTE_NAMES_SHARP
@@ -38,16 +50,15 @@ object Notes {
     const val PITCH_CLASS_COUNT = 12
 
     /**
-     * Converts a pitch class integer to its human-readable note name.
+     * Converts a pitch class integer to its human-readable note name
+     * using the standard enharmonic spellings ([NOTE_NAMES_STANDARD]).
      *
      * @param pitchClass An integer from 0 to 11 representing a pitch class.
-     * @param useFlats When true, returns flat names (Db, Eb, etc.);
-     *   when false, returns sharp names (C#, D#, etc.).
-     * @return The note name (e.g., "C", "F#"/"Gb", "B").
+     * @return The note name (e.g., "C", "F#", "Bb").
      * @throws IndexOutOfBoundsException if [pitchClass] is not in 0..11.
      */
-    fun pitchClassToName(pitchClass: Int, useFlats: Boolean = false): String =
-        if (useFlats) NOTE_NAMES_FLAT[pitchClass] else NOTE_NAMES_SHARP[pitchClass]
+    fun pitchClassToName(pitchClass: Int): String =
+        NOTE_NAMES_STANDARD[pitchClass]
 
     /**
      * Key roots (pitch classes) whose major scales use flats.
@@ -72,26 +83,24 @@ object Notes {
      * In flat keys (F major, Bb major, etc.) accidentals are shown as flats;
      * in sharp keys (G major, D major, etc.) they are shown as sharps.
      *
-     * Falls back to [useFlats] when no key context is provided.
+     * Falls back to [NOTE_NAMES_STANDARD] when no key context is provided.
      *
      * @param pitchClass The pitch class (0–11).
      * @param keyRoot The root pitch class of the active key, or null for no key context.
      * @param isMinor Whether the active key is minor.
-     * @param useFlats Global user preference fallback.
      */
     fun enharmonicForKey(
         pitchClass: Int,
         keyRoot: Int?,
         isMinor: Boolean = false,
-        useFlats: Boolean = false,
     ): String {
-        if (keyRoot == null) return pitchClassToName(pitchClass, useFlats)
+        if (keyRoot == null) return pitchClassToName(pitchClass)
 
         val keyUsesFlats = if (isMinor) {
             keyRoot in FLAT_MINOR_KEY_ROOTS
         } else {
             keyRoot in FLAT_KEY_ROOTS
         }
-        return pitchClassToName(pitchClass, keyUsesFlats)
+        return if (keyUsesFlats) NOTE_NAMES_FLAT[pitchClass] else NOTE_NAMES_SHARP[pitchClass]
     }
 }

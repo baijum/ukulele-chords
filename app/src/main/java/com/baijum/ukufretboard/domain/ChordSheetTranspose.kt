@@ -19,10 +19,9 @@ object ChordSheetTranspose {
      *
      * @param content The raw chord sheet content with `[ChordName]` markers.
      * @param semitones Number of semitones to transpose (positive = up, negative = down).
-     * @param useFlats Whether to use flat names for transposed notes.
      * @return New content string with all chord markers transposed.
      */
-    fun transpose(content: String, semitones: Int, useFlats: Boolean): String {
+    fun transpose(content: String, semitones: Int): String {
         if (semitones == 0) return content
 
         return CHORD_MARKER.replace(content) { match ->
@@ -36,7 +35,7 @@ object ChordSheetTranspose {
 
             // Transpose
             val newPc = Transpose.transposePitchClass(rootPc, semitones)
-            val newRoot = Notes.pitchClassToName(newPc, useFlats)
+            val newRoot = Notes.pitchClassToName(newPc)
 
             "[$newRoot$qualitySuffix]"
         }

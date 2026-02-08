@@ -49,27 +49,15 @@ data class StringMatch(
  */
 object TunerNoteMapper {
 
-    /** Sharp note names indexed by pitch class (0 = C). */
-    private val NOTE_NAMES_SHARP = arrayOf(
-        "C", "C#", "D", "D#", "E", "F",
-        "F#", "G", "G#", "A", "A#", "B",
-    )
-
-    /** Flat note names indexed by pitch class (0 = C). */
-    private val NOTE_NAMES_FLAT = arrayOf(
-        "C", "Db", "D", "Eb", "E", "F",
-        "Gb", "G", "Ab", "A", "Bb", "B",
-    )
-
     /**
      * Converts a detected frequency to the nearest musical note.
      *
-     * @param hz       Frequency in Hertz (must be > 0).
-     * @param useFlats If true, accidental notes use flat names (Bb) instead of
-     *   sharps (A#).
+     * Uses standard note names (C, C#, D, Eb, E, F, F#, G, Ab, A, Bb, B).
+     *
+     * @param hz Frequency in Hertz (must be > 0).
      * @return A [NoteInfo] describing the nearest note, or `null` if [hz] ≤ 0.
      */
-    fun mapFrequency(hz: Double, useFlats: Boolean = false): NoteInfo? {
+    fun mapFrequency(hz: Double): NoteInfo? {
         if (hz <= 0.0) return null
 
         // MIDI note number (fractional) relative to A4 = 69.
@@ -83,8 +71,7 @@ object TunerNoteMapper {
         val pitchClass = ((midiRounded % 12) + 12) % 12  // ensure positive
         val octave = (midiRounded / 12) - 1
 
-        val names = if (useFlats) NOTE_NAMES_FLAT else NOTE_NAMES_SHARP
-        val noteName = names[pitchClass]
+        val noteName = com.baijum.ukufretboard.data.Notes.pitchClassToName(pitchClass)
 
         return NoteInfo(
             noteName = noteName,

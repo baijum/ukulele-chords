@@ -27,7 +27,6 @@ import com.baijum.ukufretboard.domain.Transpose
  * @param chordSymbol The chord quality symbol (e.g., "m7", "sus2").
  * @param semitoneOffset The current transpose offset from the original root.
  * @param originalRoot The original root pitch class before transposition.
- * @param useFlats Whether to display note names using flats.
  * @param onTranspose Callback with +1 or -1 when the user taps the buttons.
  */
 @Composable
@@ -36,11 +35,10 @@ fun TransposeControls(
     chordSymbol: String,
     semitoneOffset: Int,
     originalRoot: Int,
-    useFlats: Boolean = false,
     onTranspose: (Int) -> Unit,
 ) {
-    val currentName = Notes.pitchClassToName(rootPitchClass, useFlats) + chordSymbol
-    val originalName = Notes.pitchClassToName(originalRoot, useFlats) + chordSymbol
+    val currentName = Notes.pitchClassToName(rootPitchClass) + chordSymbol
+    val originalName = Notes.pitchClassToName(originalRoot) + chordSymbol
     val showOriginal = semitoneOffset != 0
 
     Row(

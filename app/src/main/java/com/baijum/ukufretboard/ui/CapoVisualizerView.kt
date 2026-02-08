@@ -46,7 +46,6 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
  * @param rootPitchClass The root pitch class of the original chord.
  * @param formula The chord formula.
  * @param tuning Current ukulele tuning.
- * @param useFlats Whether to display flat names.
  * @param leftHanded Whether to mirror diagrams for left-handed players.
  * @param onBack Callback to return to the previous view.
  * @param modifier Optional modifier.
@@ -57,7 +56,6 @@ fun CapoVisualizerView(
     rootPitchClass: Int,
     formula: ChordFormula,
     tuning: List<UkuleleString>,
-    useFlats: Boolean = false,
     leftHanded: Boolean = false,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -67,13 +65,13 @@ fun CapoVisualizerView(
 
     // Compute the sounding root when capo is applied
     val soundingRoot = (rootPitchClass + capoFret) % Notes.PITCH_CLASS_COUNT
-    val originalName = Notes.pitchClassToName(rootPitchClass, useFlats) + formula.symbol
-    val soundingName = Notes.pitchClassToName(soundingRoot, useFlats) + formula.symbol
+    val originalName = Notes.pitchClassToName(rootPitchClass) + formula.symbol
+    val soundingName = Notes.pitchClassToName(soundingRoot) + formula.symbol
 
     // Compute sounding note names for each string
     val soundingNoteNames = voicing.frets.mapIndexed { i, fret ->
         val pc = (tuning[i].openPitchClass + fret + capoFret) % Notes.PITCH_CLASS_COUNT
-        Notes.pitchClassToName(pc, useFlats)
+        Notes.pitchClassToName(pc)
     }.joinToString(" ")
 
     Column(

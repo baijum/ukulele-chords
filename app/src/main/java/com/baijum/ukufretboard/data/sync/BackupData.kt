@@ -58,7 +58,6 @@ data class BackupSettings(
     val strumDelayMs: Int = 50,
     val strumDown: Boolean = true,
     val playOnTap: Boolean = false,
-    val useFlats: Boolean = false,
     val themeMode: String = "SYSTEM",
     val tuning: String = "HIGH_G",
     val leftHanded: Boolean = false,

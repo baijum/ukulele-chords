@@ -83,7 +83,6 @@ fun ChordLibraryTab(
     onToggleLearned: ((Int, String) -> Unit)? = null,
     onPlayVoicing: ((ChordVoicing) -> Unit)? = null,
     onPlayVoicingsSequentially: ((List<ChordVoicing>) -> Unit)? = null,
-    useFlats: Boolean = false,
     leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -109,7 +108,6 @@ fun ChordLibraryTab(
         RootNoteSelector(
             selectedRoot = uiState.selectedRoot,
             onRootSelected = viewModel::selectRoot,
-            useFlats = useFlats,
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -129,7 +127,6 @@ fun ChordLibraryTab(
             selectedFormula = uiState.selectedFormula,
             selectedRoot = uiState.selectedRoot,
             onFormulaSelected = viewModel::selectFormula,
-            useFlats = useFlats,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -141,7 +138,6 @@ fun ChordLibraryTab(
                 chordSymbol = uiState.selectedFormula?.symbol ?: "",
                 semitoneOffset = 0, // Stateless — offset is reflected in root selection
                 originalRoot = uiState.selectedRoot,
-                useFlats = useFlats,
                 onTranspose = { viewModel.transpose(it) },
             )
         }
@@ -149,7 +145,7 @@ fun ChordLibraryTab(
         Spacer(modifier = Modifier.height(8.dp))
 
         if (uiState.voicings.isNotEmpty() && uiState.selectedFormula != null) {
-            val rootName = Notes.pitchClassToName(uiState.selectedRoot, useFlats)
+            val rootName = Notes.pitchClassToName(uiState.selectedRoot)
             val symbol = uiState.selectedFormula?.symbol ?: ""
 
             if (capoVisualVoicing != null && uiState.selectedFormula != null) {
@@ -159,7 +155,6 @@ fun ChordLibraryTab(
                     rootPitchClass = uiState.selectedRoot,
                     formula = uiState.selectedFormula!!,
                     tuning = tuning,
-                    useFlats = useFlats,
                     leftHanded = leftHanded,
                     onBack = { capoVisualVoicing = null },
                     modifier = Modifier.weight(1f),
@@ -203,7 +198,6 @@ fun ChordLibraryTab(
                         }
                     },
                     leftHanded = leftHanded,
-                    useFlats = useFlats,
                     onExitCompare = { compareMode = false },
                     modifier = Modifier.weight(1f),
                 )
@@ -254,7 +248,6 @@ fun ChordLibraryTab(
                                     rootPitchClass = uiState.selectedRoot,
                                     formula = formula,
                                     tuning = tuning,
-                                    useFlats = useFlats,
                                 )
                             },
                         ) {
@@ -331,9 +324,8 @@ private fun SectionLabel(text: String) {
 private fun RootNoteSelector(
     selectedRoot: Int,
     onRootSelected: (Int) -> Unit,
-    useFlats: Boolean = false,
 ) {
-    val noteNames = if (useFlats) Notes.NOTE_NAMES_FLAT else Notes.NOTE_NAMES_SHARP
+    val noteNames = Notes.NOTE_NAMES_STANDARD
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -406,10 +398,9 @@ private fun FormulaSelector(
     selectedFormula: ChordFormula?,
     selectedRoot: Int,
     onFormulaSelected: (ChordFormula) -> Unit,
-    useFlats: Boolean = false,
 ) {
     val formulas = ChordFormulas.BY_CATEGORY[category] ?: emptyList()
-    val rootName = Notes.pitchClassToName(selectedRoot, useFlats)
+    val rootName = Notes.pitchClassToName(selectedRoot)
 
     Row(
         modifier = Modifier
@@ -500,7 +491,6 @@ private fun InversionCompareView(
     onPlayVoicing: ((ChordVoicing) -> Unit)?,
     onPlayAllInversions: (() -> Unit)?,
     leftHanded: Boolean,
-    useFlats: Boolean,
     onExitCompare: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -554,7 +544,7 @@ private fun InversionCompareView(
             val voicings = grouped[inversion] ?: return@forEach
             val bestVoicing = voicings.first()
             val bassPc = ChordInfo.bassPitchClass(bestVoicing.frets, tuning)
-            val bassName = Notes.pitchClassToName(bassPc, useFlats)
+            val bassName = Notes.pitchClassToName(bassPc)
 
             item {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

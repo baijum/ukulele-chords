@@ -18,7 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,7 +74,6 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
  * Custom (user-created) progressions appear above the presets and can be
  * created via a bottom sheet and deleted individually.
  *
- * @param useFlats Whether to display note names using flats.
  * @param leftHanded Whether to mirror diagrams for left-handed players.
  * @param tuning Current ukulele tuning for voicing generation.
  * @param customProgressions User-created progressions from the ViewModel.
@@ -84,12 +87,12 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProgressionsTab(
-    useFlats: Boolean = false,
     leftHanded: Boolean = false,
     tuning: List<UkuleleString>,
     customProgressions: List<CustomProgression> = emptyList(),
     onChordTapped: (rootPitchClass: Int, quality: String) -> Unit,
-    onSaveProgression: (name: String, degrees: List<ChordDegree>, scaleType: ScaleType) -> Unit = { _, _, _ -> },
+    onSaveProgression: (name: String, description: String, degrees: List<ChordDegree>, scaleType: ScaleType) -> Unit = { _, _, _, _ -> },
+    onEditProgression: (id: String, name: String, description: String, degrees: List<ChordDegree>, scaleType: ScaleType) -> Unit = { _, _, _, _, _ -> },
     onDeleteProgression: (id: String) -> Unit = {},
     onPlayVoicing: ((ChordVoicing) -> Unit)? = null,
     onPlayAll: ((List<ChordVoicing>) -> Unit)? = null,
@@ -100,6 +103,7 @@ fun ProgressionsTab(
     var selectedScale by remember { mutableStateOf(ScaleType.MAJOR) }
     var voiceLeadingPath by remember { mutableStateOf<VoiceLeading.Path?>(null) }
     var showCreateSheet by remember { mutableStateOf(false) }
+    var editingProgression by remember { mutableStateOf<CustomProgression?>(null) }
     var capoResults by remember { mutableStateOf<List<CapoCalculator.ProgressionResult>?>(null) }
     var playbackProgression by remember { mutableStateOf<Progression?>(null) }
 
@@ -111,7 +115,6 @@ fun ProgressionsTab(
     if (capoResults != null) {
         CapoCalculatorProgressionView(
             results = capoResults!!,
-            useFlats = useFlats,
             onBack = { capoResults = null },
             leftHanded = leftHanded,
             modifier = modifier,
@@ -128,7 +131,6 @@ fun ProgressionsTab(
             onPlayVoicing = onPlayVoicing,
             onPlayAll = onPlayAll,
             leftHanded = leftHanded,
-            useFlats = useFlats,
             modifier = modifier,
         )
         return
@@ -148,7 +150,7 @@ fun ProgressionsTab(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
         )
 
-        val noteNames = if (useFlats) Notes.NOTE_NAMES_FLAT else Notes.NOTE_NAMES_SHARP
+        val noteNames = Notes.NOTE_NAMES_STANDARD
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -201,7 +203,6 @@ fun ProgressionsTab(
             ProgressionPlaybackBar(
                 progression = playbackProgression!!,
                 keyRoot = selectedRoot,
-                useFlats = useFlats,
                 tuning = tuning,
                 onPlayVoicing = onPlayVoicing,
                 onDismiss = { playbackProgression = null },
@@ -246,14 +247,12 @@ fun ProgressionsTab(
                     ProgressionCard(
                         progression = custom.progression,
                         keyRoot = selectedRoot,
-                        useFlats = useFlats,
                         onChordTapped = onChordTapped,
                         onVoiceLeading = {
                             val path = VoiceLeading.computeOptimalPath(
                                 progression = custom.progression,
                                 keyRoot = selectedRoot,
                                 tuning = tuning,
-                                useFlats = useFlats,
                             )
                             if (path != null) {
                                 voiceLeadingPath = path
@@ -264,15 +263,23 @@ fun ProgressionsTab(
                                 progression = custom.progression,
                                 keyRoot = selectedRoot,
                                 tuning = tuning,
-                                useFlats = useFlats,
                             )
                         },
                         onShare = {
-                            val text = ChordSheetFormatter.formatProgression(custom.progression, selectedRoot, useFlats)
+                            val text = ChordSheetFormatter.formatProgression(custom.progression, selectedRoot)
                             ChordSheetFormatter.shareText(context, custom.progression.name, text)
                         },
                         onPlay = { playbackProgression = custom.progression },
                         onDelete = { onDeleteProgression(custom.id) },
+                        onDuplicate = {
+                            onSaveProgression(
+                                "${custom.progression.name} (Copy)",
+                                custom.progression.description,
+                                custom.progression.degrees,
+                                custom.progression.scaleType,
+                            )
+                        },
+                        onEdit = { editingProgression = custom },
                     )
                 }
 
@@ -292,14 +299,12 @@ fun ProgressionsTab(
                 ProgressionCard(
                     progression = progression,
                     keyRoot = selectedRoot,
-                    useFlats = useFlats,
                     onChordTapped = onChordTapped,
                     onVoiceLeading = {
                         val path = VoiceLeading.computeOptimalPath(
                             progression = progression,
                             keyRoot = selectedRoot,
                             tuning = tuning,
-                            useFlats = useFlats,
                         )
                         if (path != null) {
                             voiceLeadingPath = path
@@ -310,17 +315,17 @@ fun ProgressionsTab(
                             progression = progression,
                             keyRoot = selectedRoot,
                             tuning = tuning,
-                            useFlats = useFlats,
                         )
                     },
                     onShare = {
-                        val text = ChordSheetFormatter.formatProgression(progression, selectedRoot, useFlats)
+                        val text = ChordSheetFormatter.formatProgression(progression, selectedRoot)
                         ChordSheetFormatter.shareText(context, progression.name, text)
                     },
                     onPlay = { playbackProgression = progression },
                     onDuplicate = {
                         onSaveProgression(
                             "${progression.name} (Copy)",
+                            progression.description,
                             progression.degrees,
                             progression.scaleType,
                         )
@@ -335,12 +340,29 @@ fun ProgressionsTab(
         CreateProgressionSheet(
             selectedRoot = selectedRoot,
             selectedScale = selectedScale,
-            useFlats = useFlats,
-            onSave = { name, degrees, scaleType ->
-                onSaveProgression(name, degrees, scaleType)
+            onSave = { name, description, degrees, scaleType ->
+                onSaveProgression(name, description, degrees, scaleType)
                 showCreateSheet = false
             },
             onDismiss = { showCreateSheet = false },
+        )
+    }
+
+    // Edit progression bottom sheet
+    val editing = editingProgression
+    if (editing != null) {
+        CreateProgressionSheet(
+            selectedRoot = selectedRoot,
+            selectedScale = selectedScale,
+            initialName = editing.progression.name,
+            initialDescription = editing.progression.description,
+            initialDegrees = editing.progression.degrees,
+            initialScaleType = editing.progression.scaleType,
+            onSave = { name, description, degrees, scaleType ->
+                onEditProgression(editing.id, name, description, degrees, scaleType)
+                editingProgression = null
+            },
+            onDismiss = { editingProgression = null },
         )
     }
 }
@@ -354,7 +376,6 @@ fun ProgressionsTab(
 private fun ProgressionCard(
     progression: Progression,
     keyRoot: Int,
-    useFlats: Boolean,
     onChordTapped: (Int, String) -> Unit,
     onVoiceLeading: () -> Unit,
     onCapo: () -> Unit,
@@ -362,6 +383,7 @@ private fun ProgressionCard(
     onPlay: () -> Unit,
     onDelete: (() -> Unit)? = null,
     onDuplicate: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -417,7 +439,7 @@ private fun ProgressionCard(
             ) {
                 progression.degrees.forEach { degree ->
                     val chordRoot = (keyRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
-                    val chordName = Notes.pitchClassToName(chordRoot, useFlats) + degree.quality
+                    val chordName = Notes.enharmonicForKey(chordRoot, keyRoot) + degree.quality
                     val function = harmonicFunction(degree.numeral, progression.scaleType)
                     val functionColor = when (function) {
                         HarmonicFunction.TONIC -> MaterialTheme.colorScheme.primary
@@ -465,12 +487,21 @@ private fun ProgressionCard(
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onPlay) {
-                    Text("Play")
+                IconButton(onClick = onPlay) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = "Play",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
-                TextButton(onClick = onShare) {
-                    Text("Share")
+                IconButton(onClick = onShare) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Share",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 TextButton(onClick = onCapo) {
                     Text("Capo")
@@ -478,9 +509,22 @@ private fun ProgressionCard(
                 TextButton(onClick = onVoiceLeading) {
                     Text("Voice Leading")
                 }
+                if (onEdit != null) {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
                 if (onDuplicate != null) {
-                    TextButton(onClick = onDuplicate) {
-                        Text("Duplicate")
+                    IconButton(onClick = onDuplicate) {
+                        Icon(
+                            imageVector = Icons.Filled.ContentCopy,
+                            contentDescription = "Duplicate",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                     }
                 }
             }

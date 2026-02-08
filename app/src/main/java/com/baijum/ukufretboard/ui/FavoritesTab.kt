@@ -56,7 +56,6 @@ private const val FILTER_UNFILED = "__unfiled__"
 fun FavoritesTab(
     viewModel: FavoritesViewModel,
     onVoicingSelected: (ChordVoicing) -> Unit,
-    useFlats: Boolean = false,
     leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -156,8 +155,8 @@ fun FavoritesTab(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(filtered) { favorite ->
-                    val voicing = viewModel.toChordVoicing(favorite, useFlats)
-                    val chordName = Notes.pitchClassToName(favorite.rootPitchClass, useFlats) + favorite.chordSymbol
+                    val voicing = viewModel.toChordVoicing(favorite)
+                    val chordName = Notes.pitchClassToName(favorite.rootPitchClass) + favorite.chordSymbol
 
                     Box {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {

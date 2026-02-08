@@ -296,7 +296,7 @@ private fun SheetViewer(
 
         // Content with tappable chords (transposed if needed)
         val displayContent = if (transposeSemitones != 0) {
-            ChordSheetTranspose.transpose(sheet.content, transposeSemitones, useFlats = false)
+            ChordSheetTranspose.transpose(sheet.content, transposeSemitones)
         } else {
             sheet.content
         }

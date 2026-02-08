@@ -257,34 +257,6 @@ private fun DisplaySection(
 ) {
     SectionHeader("Display")
 
-    // Note naming: Sharp / Flat
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Note Names",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Row {
-            FilterChip(
-                selected = !settings.useFlats,
-                onClick = { onSettingsChange(settings.copy(useFlats = false)) },
-                label = { Text("Sharp") },
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            FilterChip(
-                selected = settings.useFlats,
-                onClick = { onSettingsChange(settings.copy(useFlats = true)) },
-                label = { Text("Flat") },
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(12.dp))
-
     // Theme
     Text(
         text = "Theme",

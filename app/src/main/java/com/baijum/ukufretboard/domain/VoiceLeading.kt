@@ -98,14 +98,12 @@ object VoiceLeading {
      * @param progression The chord progression.
      * @param keyRoot Pitch class (0–11) of the key.
      * @param tuning Current ukulele tuning.
-     * @param useFlats Whether to use flat note names.
      * @return The optimal [Path], or null if any chord has no playable voicings.
      */
     fun computeOptimalPath(
         progression: Progression,
         keyRoot: Int,
         tuning: List<UkuleleString>,
-        useFlats: Boolean = false,
     ): Path? {
         val n = progression.degrees.size
         if (n == 0) return null
@@ -115,7 +113,7 @@ object VoiceLeading {
             val chordRoot = (keyRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
             val formula = ChordFormulas.ALL.firstOrNull { it.symbol == degree.quality }
                 ?: return null
-            val voicings = VoicingGenerator.generate(chordRoot, formula, tuning, useFlats)
+            val voicings = VoicingGenerator.generate(chordRoot, formula, tuning)
             if (voicings.isEmpty()) return null
             voicings
         }
@@ -125,7 +123,7 @@ object VoiceLeading {
             val degree = progression.degrees[0]
             val chordRoot = (keyRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
             val step = Step(
-                chordName = Notes.pitchClassToName(chordRoot, useFlats) + degree.quality,
+                chordName = Notes.enharmonicForKey(chordRoot, keyRoot) + degree.quality,
                 voicing = chordVoicings[0][0],
                 numeral = degree.numeral,
             )
@@ -178,7 +176,7 @@ object VoiceLeading {
             val degree = progression.degrees[i]
             val chordRoot = (keyRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
             Step(
-                chordName = Notes.pitchClassToName(chordRoot, useFlats) + degree.quality,
+                chordName = Notes.enharmonicForKey(chordRoot, keyRoot) + degree.quality,
                 voicing = chordVoicings[i][vi],
                 numeral = degree.numeral,
             )

@@ -94,8 +94,7 @@ class TunerViewModel : ViewModel() {
     /** Current tuning — set externally by the host screen from SettingsViewModel. */
     private var currentTuning: UkuleleTuning = UkuleleTuning.HIGH_G
 
-    /** Whether to use flat note names (Bb vs A#). */
-    private var useFlats: Boolean = false
+    
 
     // --- Smoothing state -----------------------------------------------------
 
@@ -116,13 +115,6 @@ class TunerViewModel : ViewModel() {
     fun setTuning(tuning: UkuleleTuning) {
         currentTuning = tuning
         resetProgress()
-    }
-
-    /**
-     * Updates the note-naming preference.
-     */
-    fun setUseFlats(flats: Boolean) {
-        useFlats = flats
     }
 
     /**
@@ -209,7 +201,7 @@ class TunerViewModel : ViewModel() {
         val smoothedHz = medianFrequency()
 
         // --- Note mapping ----------------------------------------------------
-        val noteInfo = TunerNoteMapper.mapFrequency(smoothedHz, useFlats) ?: return
+        val noteInfo = TunerNoteMapper.mapFrequency(smoothedHz) ?: return
         val stringMatch = TunerNoteMapper.findNearestString(noteInfo, currentTuning)
 
         // Use cents-from-target-string for the meter (more useful than

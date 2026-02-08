@@ -44,7 +44,6 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
  * @param soundEnabled Whether sound playback is enabled. When false, the play button is hidden.
  * @param frets The raw fret list (4 values, one per string) for computing fingering
  *   and difficulty. Null when no chord is selected or frets are not available.
- * @param useFlats Whether to use flat note names for interval display.
  * @param tuning The current ukulele tuning, used for inversion detection.
  * @param modifier Optional [Modifier] for layout customization.
  */
@@ -55,7 +54,6 @@ fun ChordResultView(
     onPlayChord: () -> Unit,
     soundEnabled: Boolean = true,
     frets: List<Int>? = null,
-    useFlats: Boolean = false,
     tuning: List<UkuleleString> = FretboardViewModel.STANDARD_TUNING,
     modifier: Modifier = Modifier,
 ) {
@@ -119,7 +117,7 @@ fun ChordResultView(
                 // Show chord name with slash notation for inversions
                 val displayName = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) {
                     val bassPc = ChordInfo.bassPitchClass(frets!!, tuning)
-                    ChordInfo.slashNotation(result.name, inversion, bassPc, useFlats)
+                    ChordInfo.slashNotation(result.name, inversion, bassPc)
                 } else {
                     result.name
                 }
@@ -195,7 +193,6 @@ fun ChordResultView(
                     value = ChordInfo.buildIntervalBreakdown(
                         root = result.root,
                         notes = result.notes,
-                        useFlats = useFlats,
                     ),
                 )
 
@@ -224,8 +221,7 @@ fun ChordResultView(
                         frets, result.root.pitchClass, formula, tuning,
                     )
                     val bassNoteName = com.baijum.ukufretboard.data.Notes.pitchClassToName(
-                        ChordInfo.bassPitchClass(frets, tuning),
-                        useFlats,
+                        ChordInfo.bassPitchClass(frets, tuning)
                     )
                     ChordInfoRow(
                         label = "Inversion",

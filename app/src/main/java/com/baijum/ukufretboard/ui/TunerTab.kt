@@ -72,12 +72,10 @@ fun TunerTab(
     viewModel: TunerViewModel,
     tuning: UkuleleTuning,
     leftHanded: Boolean,
-    useFlats: Boolean,
     soundEnabled: Boolean,
 ) {
     // Keep ViewModel in sync with settings.
     viewModel.setTuning(tuning)
-    viewModel.setUseFlats(useFlats)
 
     // Stop capture when leaving the tab.
     DisposableEffect(Unit) {

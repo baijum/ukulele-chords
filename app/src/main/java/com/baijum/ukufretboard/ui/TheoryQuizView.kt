@@ -13,6 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -31,18 +34,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.baijum.ukufretboard.data.LearningStats
 import com.baijum.ukufretboard.domain.QuizGenerator
+import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
+import androidx.compose.runtime.collectAsState
 
 /**
  * Interactive theory quiz view with category selection, scoring, and streaks.
  *
  * Users select a category (or "All"), answer multiple-choice questions,
  * and see their score and current streak.
+ * Persists scores via [LearningProgressViewModel].
  */
 @Composable
 fun TheoryQuizView(
+    progressViewModel: LearningProgressViewModel? = null,
     modifier: Modifier = Modifier,
 ) {
+    // Observe persisted stats to trigger recomposition
+    val progressState = progressViewModel?.state?.collectAsState()
+    val allTimeStats = progressViewModel?.quizStats()
     var selectedCategory by remember { mutableStateOf<QuizGenerator.QuizCategory?>(null) }
     var currentQuestion by remember { mutableStateOf<QuizGenerator.QuizQuestion?>(null) }
     var selectedAnswer by remember { mutableStateOf<Int?>(null) }
@@ -50,6 +61,25 @@ fun TheoryQuizView(
     var totalAnswered by remember { mutableIntStateOf(0) }
     var streak by remember { mutableIntStateOf(0) }
     var bestStreak by remember { mutableIntStateOf(0) }
+
+    // Blitz mode state
+    var isBlitzMode by remember { mutableStateOf(false) }
+    var blitzActive by remember { mutableStateOf(false) }
+    var blitzTimeMs by remember { mutableLongStateOf(BLITZ_DURATION_MS) }
+    var blitzScore by remember { mutableIntStateOf(0) }
+    var blitzFinished by remember { mutableStateOf(false) }
+
+    // Blitz countdown timer
+    LaunchedEffect(blitzActive) {
+        if (blitzActive) {
+            while (blitzTimeMs > 0) {
+                delay(100L)
+                blitzTimeMs -= 100
+            }
+            blitzActive = false
+            blitzFinished = true
+        }
+    }
 
     Column(
         modifier = modifier
@@ -69,6 +99,56 @@ fun TheoryQuizView(
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        // Mode toggle: Standard / Blitz
+        Text(
+            text = "Mode",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            FilterChip(
+                selected = !isBlitzMode,
+                onClick = {
+                    isBlitzMode = false
+                    currentQuestion = null
+                    selectedAnswer = null
+                    blitzActive = false
+                    blitzFinished = false
+                },
+                label = { Text("Standard") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            )
+            FilterChip(
+                selected = isBlitzMode,
+                onClick = {
+                    isBlitzMode = true
+                    currentQuestion = null
+                    selectedAnswer = null
+                    blitzActive = false
+                    blitzFinished = false
+                    blitzScore = 0
+                    blitzTimeMs = BLITZ_DURATION_MS
+                    totalCorrect = 0
+                    totalAnswered = 0
+                    streak = 0
+                },
+                label = { Text("Blitz (60s)") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.error,
+                    selectedLabelColor = MaterialTheme.colorScheme.onError,
+                ),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Category selector
         Text(
@@ -107,8 +187,15 @@ fun TheoryQuizView(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Score display
+        // Session score display
         if (totalAnswered > 0) {
+            Text(
+                text = "This Session",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -121,18 +208,136 @@ fun TheoryQuizView(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
+        // All-time stats
+        if (allTimeStats != null && allTimeStats.total > 0) {
+            Text(
+                text = "All Time",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                ScoreStat(label = "Score", value = "${allTimeStats.correct}/${allTimeStats.total}")
+                ScoreStat(label = "Accuracy", value = "${allTimeStats.accuracyPercent}%")
+                ScoreStat(label = "Best Streak", value = "${allTimeStats.bestStreak}")
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // Blitz timer
+        if (isBlitzMode && blitzActive) {
+            val seconds = (blitzTimeMs / 1000).toInt()
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (seconds <= 10) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.primaryContainer,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    Text(
+                        text = "⏱ ${seconds}s",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "Score: $blitzScore",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // Blitz finished
+        if (isBlitzMode && blitzFinished) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "Time's Up!",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Score: $blitzScore",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (totalAnswered > 0) {
+                        Text(
+                            text = "Accuracy: ${totalCorrect * 100 / totalAnswered}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = {
+                        blitzFinished = false
+                        blitzScore = 0
+                        blitzTimeMs = BLITZ_DURATION_MS
+                        totalCorrect = 0
+                        totalAnswered = 0
+                        streak = 0
+                        currentQuestion = QuizGenerator.generate(selectedCategory)
+                        selectedAnswer = null
+                        blitzActive = true
+                    }) {
+                        Text("Play Again")
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         // Question card or start button
-        if (currentQuestion == null) {
+        if (isBlitzMode && blitzFinished) {
+            // Don't show question when blitz is finished — handled above
+        } else if (currentQuestion == null) {
             Button(
                 onClick = {
                     currentQuestion = QuizGenerator.generate(selectedCategory)
                     selectedAnswer = null
+                    if (isBlitzMode && !blitzActive) {
+                        blitzActive = true
+                        blitzTimeMs = BLITZ_DURATION_MS
+                        blitzScore = 0
+                        totalCorrect = 0
+                        totalAnswered = 0
+                        streak = 0
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
             ) {
-                Text(if (totalAnswered == 0) "Start Quiz" else "Next Question")
+                Text(
+                    when {
+                        isBlitzMode -> "Start Blitz!"
+                        totalAnswered == 0 -> "Start Quiz"
+                        else -> "Next Question"
+                    }
+                )
             }
         } else {
             QuestionCard(
@@ -142,12 +347,24 @@ fun TheoryQuizView(
                     if (selectedAnswer != null) return@QuestionCard // Already answered
                     selectedAnswer = answerIndex
                     totalAnswered++
-                    if (answerIndex == currentQuestion!!.correctIndex) {
+                    val isCorrect = answerIndex == currentQuestion!!.correctIndex
+                    if (isCorrect) {
                         totalCorrect++
                         streak++
                         if (streak > bestStreak) bestStreak = streak
+                        if (isBlitzMode) {
+                            blitzScore++
+                            // +3 second bonus for correct answer
+                            blitzTimeMs = (blitzTimeMs + 3000).coerceAtMost(BLITZ_DURATION_MS)
+                        }
                     } else {
                         streak = 0
+                    }
+                    progressViewModel?.recordQuizAnswer(currentQuestion!!.category, isCorrect)
+                    // In blitz mode, auto-advance immediately
+                    if (isBlitzMode && blitzActive) {
+                        currentQuestion = QuizGenerator.generate(selectedCategory)
+                        selectedAnswer = null
                     }
                 },
                 onNext = {
@@ -263,3 +480,6 @@ private fun QuestionCard(
         }
     }
 }
+
+/** Blitz mode duration in milliseconds (60 seconds). */
+private const val BLITZ_DURATION_MS = 60_000L

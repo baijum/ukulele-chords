@@ -23,8 +23,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,17 +36,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Check
 import com.baijum.ukufretboard.data.TheoryLesson
 import com.baijum.ukufretboard.data.TheoryLessons
+import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
 
 /**
  * Theory Lessons Hub with structured curriculum.
  *
  * Shows lessons organized by module. Tapping a lesson opens its content
  * with an explanation, key points, and a mini quiz.
+ * Tracks lesson completion and quiz results via [LearningProgressViewModel].
  */
 @Composable
 fun TheoryLessonsView(
+    progressViewModel: LearningProgressViewModel? = null,
     modifier: Modifier = Modifier,
 ) {
     var selectedLesson by remember { mutableStateOf<TheoryLesson?>(null) }
@@ -52,11 +58,21 @@ fun TheoryLessonsView(
     if (selectedLesson != null) {
         LessonDetailView(
             lesson = selectedLesson!!,
-            onBack = { selectedLesson = null },
+            onBack = {
+                progressViewModel?.markLessonCompleted(selectedLesson!!.id)
+                selectedLesson = null
+            },
+            onQuizPassed = { lessonId ->
+                progressViewModel?.markLessonQuizPassed(lessonId)
+            },
         )
     } else {
         LessonListView(
             onLessonSelected = { selectedLesson = it },
+            isLessonCompleted = { progressViewModel?.isLessonCompleted(it) ?: false },
+            isQuizPassed = { progressViewModel?.isLessonQuizPassed(it) ?: false },
+            completedCount = progressViewModel?.state?.collectAsState()?.value?.completedLessons ?: 0,
+            totalCount = TheoryLessons.ALL.size,
             modifier = modifier,
         )
     }
@@ -65,6 +81,10 @@ fun TheoryLessonsView(
 @Composable
 private fun LessonListView(
     onLessonSelected: (TheoryLesson) -> Unit,
+    isLessonCompleted: (String) -> Boolean,
+    isQuizPassed: (String) -> Boolean,
+    completedCount: Int,
+    totalCount: Int,
     modifier: Modifier = Modifier,
 ) {
     val lessonsByModule = remember { TheoryLessons.byModule() }
@@ -86,10 +106,41 @@ private fun LessonListView(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        // Overall progress bar
+        if (completedCount > 0) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "Progress",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "$completedCount / $totalCount lessons",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = {
+                    if (totalCount > 0) completedCount.toFloat() / totalCount else 0f
+                },
+                modifier = Modifier.fillMaxWidth(),
+                trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         TheoryLessons.MODULES.forEachIndexed { moduleIndex, moduleName ->
             val lessons = lessonsByModule[moduleName] ?: emptyList()
+            val moduleCompleted = lessons.count { isLessonCompleted(it.id) }
 
             Card(
                 modifier = Modifier
@@ -99,16 +150,32 @@ private fun LessonListView(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text(
-                        text = "${moduleIndex + 1}. $moduleName",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "${moduleIndex + 1}. $moduleName",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        if (moduleCompleted > 0) {
+                            Text(
+                                text = "$moduleCompleted/${lessons.size}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     lessons.forEachIndexed { index, lesson ->
+                        val completed = isLessonCompleted(lesson.id)
+                        val quizPassed = isQuizPassed(lesson.id)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -116,13 +183,30 @@ private fun LessonListView(
                                 .padding(vertical = 8.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (completed) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "Completed",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                )
+                            }
                             Text(
                                 text = lesson.title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f),
                             )
+                            if (quizPassed) {
+                                Text(
+                                    text = "\u2713",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(end = 4.dp),
+                                )
+                            }
                             Text(
-                                text = "\u203A", // right arrow
+                                text = "\u203A",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -143,6 +227,7 @@ private fun LessonListView(
 private fun LessonDetailView(
     lesson: TheoryLesson,
     onBack: () -> Unit,
+    onQuizPassed: (String) -> Unit = {},
 ) {
     var selectedQuizAnswer by remember { mutableStateOf<Int?>(null) }
 
@@ -244,7 +329,14 @@ private fun LessonDetailView(
                     }
 
                     OutlinedButton(
-                        onClick = { if (selectedQuizAnswer == null) selectedQuizAnswer = index },
+                        onClick = {
+                            if (selectedQuizAnswer == null) {
+                                selectedQuizAnswer = index
+                                if (index == lesson.quizCorrectIndex) {
+                                    onQuizPassed(lesson.id)
+                                }
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 2.dp),

@@ -139,8 +139,7 @@ class FretboardViewModel : ViewModel() {
     /** Current sound settings, updated from [SettingsViewModel] via the UI layer. */
     private var soundSettings: SoundSettings = SoundSettings()
 
-    /** Whether to use flat note names, updated from [SettingsViewModel]. */
-    private var useFlats: Boolean = false
+    
 
     /**
      * Updates the sound settings used by playback methods.
@@ -163,19 +162,6 @@ class FretboardViewModel : ViewModel() {
                     tuning = newTuning,
                     detectionResult = detectChord(current.selections),
                 )
-            }
-        }
-    }
-
-    /**
-     * Updates the note naming preference and re-detects the current chord.
-     */
-    fun setUseFlats(flats: Boolean) {
-        if (useFlats != flats) {
-            useFlats = flats
-            // Re-detect with new note names
-            _uiState.update { current ->
-                current.copy(detectionResult = detectChord(current.selections))
             }
         }
     }
@@ -317,9 +303,9 @@ class FretboardViewModel : ViewModel() {
         val name = if (overlay.enabled && overlay.scale != null) {
             // Use key-aware enharmonic spelling when a scale is active
             val isMinor = overlay.scale.intervals.size > 2 && overlay.scale.intervals[2] == 3
-            Notes.enharmonicForKey(pitchClass, overlay.root, isMinor, useFlats)
+            Notes.enharmonicForKey(pitchClass, overlay.root, isMinor)
         } else {
-            Notes.pitchClassToName(pitchClass, useFlats)
+            Notes.pitchClassToName(pitchClass)
         }
         return Note(pitchClass = pitchClass, name = name)
     }
@@ -495,6 +481,6 @@ class FretboardViewModel : ViewModel() {
                 val openPitchClass = tuning[stringIndex].openPitchClass
                 (openPitchClass + fret!!) % Notes.PITCH_CLASS_COUNT
             }
-        return ChordDetector.detect(pitchClasses, useFlats)
+        return ChordDetector.detect(pitchClasses)
     }
 }

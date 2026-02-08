@@ -57,7 +57,6 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
  *
  * @param progression The chord progression to play.
  * @param keyRoot The root pitch class of the selected key.
- * @param useFlats Whether to display note names using flats.
  * @param tuning Current ukulele tuning for voicing generation.
  * @param onPlayVoicing Callback to play a chord voicing.
  * @param onDismiss Callback to close the playback bar.
@@ -66,7 +65,6 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
 fun ProgressionPlaybackBar(
     progression: Progression,
     keyRoot: Int,
-    useFlats: Boolean,
     tuning: List<UkuleleString>,
     onPlayVoicing: ((ChordVoicing) -> Unit)?,
     onDismiss: () -> Unit,
@@ -146,7 +144,7 @@ fun ProgressionPlaybackBar(
             ) {
                 progression.degrees.forEachIndexed { index, degree ->
                     val chordRoot = (keyRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
-                    val chordName = Notes.pitchClassToName(chordRoot, useFlats) + degree.quality
+                    val chordName = Notes.enharmonicForKey(chordRoot, keyRoot) + degree.quality
                     val isCurrent = index == currentChordIndex
 
                     Box(

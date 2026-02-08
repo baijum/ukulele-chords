@@ -63,12 +63,10 @@ import kotlinx.coroutines.launch
  * as single-note sounds at the set BPM.
  *
  * @param onPlayNote Callback to play a single note (pitch class).
- * @param useFlats Whether to display note names using flats.
  */
 @Composable
 fun MelodyNotepadView(
     onPlayNote: ((Int) -> Unit)? = null,
-    useFlats: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -79,7 +77,7 @@ fun MelodyNotepadView(
     var playingIndex by remember { mutableIntStateOf(-1) }
     var selectedNoteIndex by remember { mutableIntStateOf(-1) }
 
-    val noteNames = if (useFlats) Notes.NOTE_NAMES_FLAT else Notes.NOTE_NAMES_SHARP
+    val noteNames = Notes.NOTE_NAMES_STANDARD
 
     Column(
         modifier = modifier

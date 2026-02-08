@@ -65,7 +65,6 @@ import kotlinx.coroutines.delay
  *   when entering/exiting full-screen mode.
  * @param soundEnabled Whether sound playback is enabled.
  * @param leftHanded Whether to mirror the fretboard for left-handed players.
- * @param useFlats Whether to display note names using flats.
  * @param onExit Callback to exit full-screen mode.
  */
 @Composable
@@ -73,7 +72,6 @@ fun FullScreenFretboard(
     viewModel: FretboardViewModel,
     soundEnabled: Boolean,
     leftHanded: Boolean = false,
-    useFlats: Boolean = false,
     onExit: () -> Unit,
 ) {
     val context = LocalContext.current

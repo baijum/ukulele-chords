@@ -33,10 +33,10 @@ data class Note(
  * @param fret The fret number (0 = open string, 1–12 = fretted positions).
  * @return A [Note] representing the pitch at the given string/fret position.
  */
-fun calculateNote(openStringPitchClass: Int, fret: Int, useFlats: Boolean = false): Note {
+fun calculateNote(openStringPitchClass: Int, fret: Int): Note {
     val pitchClass = (openStringPitchClass + fret) % Notes.PITCH_CLASS_COUNT
     return Note(
         pitchClass = pitchClass,
-        name = Notes.pitchClassToName(pitchClass, useFlats),
+        name = Notes.pitchClassToName(pitchClass),
     )
 }

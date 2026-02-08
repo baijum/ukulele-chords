@@ -15,9 +15,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -35,18 +38,31 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
+import com.baijum.ukufretboard.audio.ToneGenerator
+import com.baijum.ukufretboard.data.LearningStats
 import com.baijum.ukufretboard.domain.IntervalTrainer
+import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.launch
 
 /**
  * Interactive interval trainer with visual note display and multiple-choice answers.
  *
  * Users identify intervals between two notes shown on screen.
  * Difficulty increases progressively as they get more correct answers.
+ * Persists scores via [LearningProgressViewModel].
  */
 @Composable
 fun IntervalTrainerView(
+    progressViewModel: LearningProgressViewModel? = null,
     modifier: Modifier = Modifier,
 ) {
+    // Observe persisted stats to trigger recomposition
+    val progressState = progressViewModel?.state?.collectAsState()
+    val allTimeStats = progressViewModel?.intervalStats()
+    var isAudioMode by remember { mutableStateOf(false) }
+    var direction by remember { mutableStateOf(IntervalTrainer.IntervalDirection.ASCENDING) }
     var level by remember { mutableIntStateOf(1) }
     var question by remember { mutableStateOf<IntervalTrainer.IntervalQuestion?>(null) }
     var selectedAnswer by remember { mutableStateOf<Int?>(null) }
@@ -54,6 +70,7 @@ fun IntervalTrainerView(
     var totalAnswered by remember { mutableIntStateOf(0) }
     var streak by remember { mutableIntStateOf(0) }
     var bestStreak by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
@@ -73,6 +90,83 @@ fun IntervalTrainerView(
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        // Mode toggle: Visual / Audio
+        Text(
+            text = "Mode",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            FilterChip(
+                selected = !isAudioMode,
+                onClick = {
+                    isAudioMode = false
+                    question = null
+                    selectedAnswer = null
+                },
+                label = { Text("Visual") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            )
+            FilterChip(
+                selected = isAudioMode,
+                onClick = {
+                    isAudioMode = true
+                    question = null
+                    selectedAnswer = null
+                },
+                label = { Text("Audio") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+            )
+        }
+
+        // Direction selector (audio mode only)
+        if (isAudioMode) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Direction",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val directions = listOf(
+                    "Ascending" to IntervalTrainer.IntervalDirection.ASCENDING,
+                    "Descending" to IntervalTrainer.IntervalDirection.DESCENDING,
+                    "Harmonic" to IntervalTrainer.IntervalDirection.HARMONIC,
+                )
+                directions.forEach { (label, dir) ->
+                    FilterChip(
+                        selected = direction == dir,
+                        onClick = {
+                            direction = dir
+                            question = null
+                            selectedAnswer = null
+                        },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondary,
+                        ),
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Level selector
         Text(
@@ -105,8 +199,15 @@ fun IntervalTrainerView(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Score display
+        // Session score display
         if (totalAnswered > 0) {
+            Text(
+                text = "This Session",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -116,6 +217,26 @@ fun IntervalTrainerView(
                 ScoreItem(label = "Streak", value = "$streak")
                 ScoreItem(label = "Best", value = "$bestStreak")
             }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // All-time stats
+        if (allTimeStats != null && allTimeStats.total > 0) {
+            Text(
+                text = "All Time",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                ScoreItem(label = "Score", value = "${allTimeStats.correct}/${allTimeStats.total}")
+                ScoreItem(label = "Accuracy", value = "${allTimeStats.accuracyPercent}%")
+                ScoreItem(label = "Best Streak", value = "${allTimeStats.bestStreak}")
+            }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -123,8 +244,14 @@ fun IntervalTrainerView(
             // Start button
             Button(
                 onClick = {
-                    question = IntervalTrainer.generateQuestion(level)
+                    val dir = if (isAudioMode) direction else IntervalTrainer.IntervalDirection.ASCENDING
+                    question = IntervalTrainer.generateQuestion(level, dir)
                     selectedAnswer = null
+                    // Auto-play in audio mode
+                    if (isAudioMode) {
+                        val q = question!!
+                        scope.launch { playInterval(q) }
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -151,35 +278,90 @@ fun IntervalTrainerView(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Two notes displayed prominently
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        NoteCircle(
-                            noteName = question!!.note1Name,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                    if (isAudioMode) {
+                        // Audio mode: replay button, no note names shown until answered
+                        Button(
+                            onClick = {
+                                scope.launch { playInterval(question!!) }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                Icons.Filled.PlayArrow,
+                                contentDescription = "Replay",
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                            Text("Replay Interval")
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Show direction label
+                        val dirLabel = when (question!!.direction) {
+                            IntervalTrainer.IntervalDirection.ASCENDING -> "Ascending"
+                            IntervalTrainer.IntervalDirection.DESCENDING -> "Descending"
+                            IntervalTrainer.IntervalDirection.HARMONIC -> "Harmonic"
+                        }
                         Text(
-                            text = "\u2192", // arrow
-                            style = MaterialTheme.typography.headlineMedium,
+                            text = dirLabel,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        NoteCircle(
-                            noteName = question!!.note2Name,
-                            color = MaterialTheme.colorScheme.secondary,
+
+                        // Show note names after answering
+                        if (selectedAnswer != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                NoteCircle(
+                                    noteName = question!!.note1Name,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    text = "\u2192",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                NoteCircle(
+                                    noteName = question!!.note2Name,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                            }
+                        }
+                    } else {
+                        // Visual mode: show two notes prominently
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            NoteCircle(
+                                noteName = question!!.note1Name,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = "\u2192",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            NoteCircle(
+                                noteName = question!!.note2Name,
+                                color = MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Semitone count hint
+                        Text(
+                            text = "${question!!.intervalSemitones} semitone${if (question!!.intervalSemitones != 1) "s" else ""} apart",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Semitone count hint
-                    Text(
-                        text = "${question!!.intervalSemitones} semitone${if (question!!.intervalSemitones != 1) "s" else ""} apart",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -200,7 +382,8 @@ fun IntervalTrainerView(
                                 if (selectedAnswer != null) return@OutlinedButton
                                 selectedAnswer = index
                                 totalAnswered++
-                                if (index == question!!.correctIndex) {
+                                val isCorrect = index == question!!.correctIndex
+                                if (isCorrect) {
                                     totalCorrect++
                                     streak++
                                     if (streak > bestStreak) bestStreak = streak
@@ -209,6 +392,7 @@ fun IntervalTrainerView(
                                 } else {
                                     streak = 0
                                 }
+                                progressViewModel?.recordIntervalAnswer(level, isCorrect)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -243,8 +427,12 @@ fun IntervalTrainerView(
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             onClick = {
-                                question = IntervalTrainer.generateQuestion(level)
+                                val dir = if (isAudioMode) direction else IntervalTrainer.IntervalDirection.ASCENDING
+                                question = IntervalTrainer.generateQuestion(level, dir)
                                 selectedAnswer = null
+                                if (isAudioMode) {
+                                    scope.launch { playInterval(question!!) }
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -288,5 +476,33 @@ private fun ScoreItem(label: String, value: String) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * Plays the two notes of an interval question using [ToneGenerator].
+ */
+private suspend fun playInterval(question: IntervalTrainer.IntervalQuestion) {
+    when (question.direction) {
+        IntervalTrainer.IntervalDirection.ASCENDING -> {
+            ToneGenerator.playNote(question.note1PitchClass, question.note1Octave, durationMs = 700)
+            ToneGenerator.playNote(question.note2PitchClass, question.note2Octave, durationMs = 700)
+        }
+        IntervalTrainer.IntervalDirection.DESCENDING -> {
+            // Play higher note first, then lower
+            ToneGenerator.playNote(question.note2PitchClass, question.note2Octave, durationMs = 700)
+            ToneGenerator.playNote(question.note1PitchClass, question.note1Octave, durationMs = 700)
+        }
+        IntervalTrainer.IntervalDirection.HARMONIC -> {
+            // Play both notes simultaneously as a 2-note chord
+            ToneGenerator.playChord(
+                notes = listOf(
+                    question.note1PitchClass to question.note1Octave,
+                    question.note2PitchClass to question.note2Octave,
+                ),
+                noteDurationMs = 1000,
+                strumDelayMs = 0,
+            )
+        }
     }
 }

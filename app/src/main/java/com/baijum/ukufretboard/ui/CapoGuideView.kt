@@ -345,7 +345,7 @@ private fun InteractiveCapoDemo() {
                     CapoReference.STANDARD_OPEN_PITCHES.forEachIndexed { index, openPitch ->
                         val effectivePitch = (openPitch + selectedCapoFret) % Notes.PITCH_CLASS_COUNT
                         val originalName = CapoReference.STRING_NAMES[index]
-                        val effectiveName = Notes.pitchClassToName(effectivePitch, false)
+                        val effectiveName = Notes.pitchClassToName(effectivePitch)
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(

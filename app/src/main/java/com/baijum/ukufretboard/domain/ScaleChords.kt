@@ -94,13 +94,13 @@ object ScaleChords {
     }
 
     /**
-     * Formats a diatonic chord for display.
+     * Formats a diatonic chord for display using standard note names.
      *
      * @param chord The diatonic chord.
-     * @param useFlats Whether to use flat note names.
+     * @param scaleRoot The root pitch class of the scale, for key-aware spelling.
      * @return Display string like "Cm", "Ddim", "G".
      */
-    fun formatChord(chord: DiatonicChord, useFlats: Boolean): String {
-        return Notes.pitchClassToName(chord.rootPitchClass, useFlats) + chord.quality
+    fun formatChord(chord: DiatonicChord, scaleRoot: Int): String {
+        return Notes.enharmonicForKey(chord.rootPitchClass, scaleRoot) + chord.quality
     }
 }

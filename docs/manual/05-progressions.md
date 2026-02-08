@@ -24,11 +24,16 @@ Each progression card shows:
 - **Play** — hear the progression played back with the current sound settings.
 - **Share** — export the progression as text to share with others.
 - **Voice Leading** — view smooth voice-leading suggestions between the chords.
-- **Duplicate** — create a copy of the progression. The copy appears as a new custom progression with "(Copy)" appended to the name. This is useful when you want to modify a progression without changing the original.
+- **Duplicate** — create a copy of the progression as a new custom progression with "(Copy)" appended to the name. Available on both preset and custom progressions. This is useful when you want to create a variant without changing the original.
+- **Edit** — open the progression in the editor to rename it, add or remove chords, or change the scale type. Available on custom progressions only (presets cannot be modified).
 
 ## Custom Progressions
 
-You can create your own custom progressions by tapping the **+ button**. Custom progressions can be edited and deleted. The **Duplicate** button on any custom progression creates a new copy you can modify independently.
+You can create your own custom progressions by tapping the **+ button**. Custom progressions can be edited, duplicated, and deleted.
+
+- **Edit** lets you change the name, chord sequence, or scale type of an existing custom progression.
+- **Duplicate** creates a new independent copy you can modify separately.
+- **Delete** permanently removes the custom progression.
 
 ## Tips
 

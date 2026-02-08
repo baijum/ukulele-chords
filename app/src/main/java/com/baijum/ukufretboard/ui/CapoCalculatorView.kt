@@ -118,7 +118,6 @@ fun CapoCalculatorSingleView(
  * with a combined score and mini diagrams.
  *
  * @param results List of [CapoCalculator.ProgressionResult] sorted by total score.
- * @param useFlats Whether to display flat names.
  * @param onBack Callback to return to the previous view.
  * @param leftHanded Whether to mirror diagrams for left-handed players.
  * @param modifier Optional modifier.
@@ -126,7 +125,6 @@ fun CapoCalculatorSingleView(
 @Composable
 fun CapoCalculatorProgressionView(
     results: List<CapoCalculator.ProgressionResult>,
-    useFlats: Boolean = false,
     onBack: () -> Unit,
     leftHanded: Boolean = false,
     modifier: Modifier = Modifier,

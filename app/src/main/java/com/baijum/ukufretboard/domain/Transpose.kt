@@ -27,17 +27,15 @@ object Transpose {
      * @param rootPitchClass The original root pitch class (0–11).
      * @param symbol The chord quality symbol (e.g., "m", "7", "maj7").
      * @param semitones The number of semitones to shift.
-     * @param useFlats Whether to use flat names for the transposed root.
      * @return The transposed chord name (e.g., "Ebm7").
      */
     fun transposeChordName(
         rootPitchClass: Int,
         symbol: String,
         semitones: Int,
-        useFlats: Boolean = false,
     ): String {
         val newRoot = transposePitchClass(rootPitchClass, semitones)
-        return Notes.pitchClassToName(newRoot, useFlats) + symbol
+        return Notes.pitchClassToName(newRoot) + symbol
     }
 
     /**

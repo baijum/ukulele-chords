@@ -11,16 +11,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.ChordSubstitutions
+import com.baijum.ukufretboard.data.Notes
 import com.baijum.ukufretboard.data.SubstitutionCategory
 
 /**
@@ -33,6 +42,8 @@ import com.baijum.ukufretboard.data.SubstitutionCategory
 fun ChordSubstitutionsView(
     modifier: Modifier = Modifier,
 ) {
+    var selectedKey by remember { mutableIntStateOf(0) } // C = 0 (default)
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -50,11 +61,41 @@ fun ChordSubstitutionsView(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Key selector
+        Text(
+            text = "Examples in key of:",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            (0..11).forEach { pc ->
+                val name = Notes.pitchClassToName(pc)
+                FilterChip(
+                    selected = selectedKey == pc,
+                    onClick = { selectedKey = pc },
+                    label = { Text(name, style = MaterialTheme.typography.labelSmall) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Display all categories
         ChordSubstitutions.CATEGORIES.forEachIndexed { index, category ->
-            SubstitutionCategoryCard(category = category)
+            SubstitutionCategoryCard(category = category, transposition = selectedKey)
             if (index < ChordSubstitutions.CATEGORIES.lastIndex) {
                 Spacer(modifier = Modifier.height(12.dp))
             }
@@ -91,8 +132,46 @@ fun ChordSubstitutionsView(
     }
 }
 
+/**
+ * Transposes a chord name from C (pitchClass 0) to the target key.
+ *
+ * Handles names like "C", "Am", "G7", "Db7", "Fm", "Bdim".
+ */
+private fun transposeChordName(name: String, targetKey: Int): String {
+    if (name == "\u2014" || name.isBlank()) return name // em-dash or empty
+    // Extract root note (letter + optional # or b)
+    val root = name.takeWhile { it.isLetter() || it == '#' || it == 'b' }
+    val quality = name.removePrefix(root)
+    val rootPc = Notes.NOTE_NAMES_SHARP.indexOf(root).takeIf { it >= 0 }
+        ?: Notes.NOTE_NAMES_FLAT.indexOf(root).takeIf { it >= 0 }
+        ?: return name // can't parse
+    val transposedPc = (rootPc + targetKey) % 12
+    val transposedName = Notes.pitchClassToName(transposedPc)
+    return "$transposedName$quality"
+}
+
+/**
+ * Simple transposition for the "exampleInC" field.
+ *
+ * Replaces chord names like C, Am, G7, Db7 with their transposed equivalents.
+ */
+private fun transposeExample(example: String, targetKey: Int): String {
+    if (targetKey == 0) return example
+    // Pattern: match chord-like tokens (letter + optional #/b + optional quality suffix)
+    val chordPattern = Regex("""([A-G][#b]?)(m7?|7|dim|maj7|°|\+)?""")
+    return chordPattern.replace(example) { match ->
+        val root = match.groupValues[1]
+        val quality = match.groupValues[2]
+        val rootPc = Notes.NOTE_NAMES_SHARP.indexOf(root).takeIf { it >= 0 }
+            ?: Notes.NOTE_NAMES_FLAT.indexOf(root).takeIf { it >= 0 }
+            ?: return@replace match.value
+        val transposedPc = (rootPc + targetKey) % 12
+        "${Notes.pitchClassToName(transposedPc)}$quality"
+    }
+}
+
 @Composable
-private fun SubstitutionCategoryCard(category: SubstitutionCategory) {
+private fun SubstitutionCategoryCard(category: SubstitutionCategory, transposition: Int = 0) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -145,13 +224,13 @@ private fun SubstitutionCategoryCard(category: SubstitutionCategory) {
                         }
                         if (sub.sharedNotes != "\u2014") {
                             Text(
-                                text = "Shared: ${sub.sharedNotes}",
+                                text = "Shared: ${transposeExample(sub.sharedNotes, transposition)}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         Text(
-                            text = sub.exampleInC,
+                            text = transposeExample(sub.exampleInC, transposition),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

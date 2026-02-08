@@ -69,14 +69,12 @@ object CapoCalculator {
      * @param rootPitchClass The pitch class of the chord's root (0–11).
      * @param formula The chord's formula (intervals + quality).
      * @param tuning Current ukulele tuning.
-     * @param useFlats Whether to display flat names.
      * @return List of results sorted by score (best first), one per capo position.
      */
     fun forSingleChord(
         rootPitchClass: Int,
         formula: ChordFormula,
         tuning: List<UkuleleString>,
-        useFlats: Boolean = false,
     ): List<SingleChordResult> {
         val results = mutableListOf<SingleChordResult>()
 
@@ -86,14 +84,14 @@ object CapoCalculator {
                 Notes.PITCH_CLASS_COUNT) % Notes.PITCH_CLASS_COUNT
 
             // Generate voicings for the shape chord
-            val voicings = VoicingGenerator.generate(shapeRoot, formula, tuning, useFlats)
+            val voicings = VoicingGenerator.generate(shapeRoot, formula, tuning)
             if (voicings.isEmpty()) continue
 
             val best = voicings.first() // Already sorted by playability
             val score = scoreVoicing(best, shapeRoot, formula.symbol)
 
-            val shapeName = Notes.pitchClassToName(shapeRoot, useFlats) + formula.symbol
-            val soundingName = Notes.pitchClassToName(rootPitchClass, useFlats) + formula.symbol
+            val shapeName = Notes.pitchClassToName(shapeRoot) + formula.symbol
+            val soundingName = Notes.pitchClassToName(rootPitchClass) + formula.symbol
 
             results.add(
                 SingleChordResult(
@@ -115,14 +113,12 @@ object CapoCalculator {
      * @param progression The chord progression.
      * @param keyRoot The pitch class of the key root (0–11).
      * @param tuning Current ukulele tuning.
-     * @param useFlats Whether to display flat names.
      * @return List of results sorted by total score (best first).
      */
     fun forProgression(
         progression: Progression,
         keyRoot: Int,
         tuning: List<UkuleleString>,
-        useFlats: Boolean = false,
     ): List<ProgressionResult> {
         val results = mutableListOf<ProgressionResult>()
 
@@ -139,14 +135,14 @@ object CapoCalculator {
                 val formula = ChordFormulas.ALL.firstOrNull { it.symbol == degree.quality }
                 if (formula == null) { allValid = false; break }
 
-                val voicings = VoicingGenerator.generate(shapeRoot, formula, tuning, useFlats)
+                val voicings = VoicingGenerator.generate(shapeRoot, formula, tuning)
                 if (voicings.isEmpty()) { allValid = false; break }
 
                 val best = voicings.first()
                 val score = scoreVoicing(best, shapeRoot, formula.symbol)
 
-                val shapeName = Notes.pitchClassToName(shapeRoot, useFlats) + degree.quality
-                val soundingName = Notes.pitchClassToName(soundingRoot, useFlats) + degree.quality
+                val shapeName = Notes.pitchClassToName(shapeRoot) + degree.quality
+                val soundingName = Notes.pitchClassToName(soundingRoot) + degree.quality
 
                 chordResults.add(
                     SingleChordResult(

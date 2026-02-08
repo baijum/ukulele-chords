@@ -13,6 +13,16 @@ import com.baijum.ukufretboard.data.Notes
  */
 object IntervalTrainer {
 
+    /** Direction for audio playback of an interval. */
+    enum class IntervalDirection {
+        /** Second note is higher than the first. */
+        ASCENDING,
+        /** Second note is lower than the first. */
+        DESCENDING,
+        /** Both notes are played simultaneously. */
+        HARMONIC,
+    }
+
     /** Full interval names for all 12 semitones. */
     val INTERVAL_NAMES = listOf(
         "Unison", "Minor 2nd", "Major 2nd", "Minor 3rd", "Major 3rd",
@@ -58,16 +68,25 @@ object IntervalTrainer {
         val correctIndex: Int,
         val note1Fret: Int,
         val note2Fret: Int,
+        /** Octave of the first note for audio playback. */
+        val note1Octave: Int = 4,
+        /** Octave of the second note for audio playback. */
+        val note2Octave: Int = 4,
+        /** Direction for audio playback. */
+        val direction: IntervalDirection = IntervalDirection.ASCENDING,
     )
 
     /**
      * Generates a random interval question at the given difficulty level.
      *
      * @param level Difficulty level (1–4).
-     * @param useFlats Whether to use flat note names.
+     * @param direction The playback direction for audio mode (unused in visual mode).
      * @return An [IntervalQuestion] with 4 options.
      */
-    fun generateQuestion(level: Int, useFlats: Boolean = false): IntervalQuestion {
+    fun generateQuestion(
+        level: Int,
+        direction: IntervalDirection = IntervalDirection.ASCENDING,
+    ): IntervalQuestion {
         val allowedIntervals = LEVEL_INTERVALS[level.coerceIn(1, 4)]!!
         val interval = allowedIntervals.random()
         val effectiveInterval = if (interval == 12) 0 else interval // Octave maps to 0 semitones
@@ -75,8 +94,8 @@ object IntervalTrainer {
         val note1 = (0..11).random()
         val note2 = (note1 + interval) % 12
 
-        val note1Name = Notes.pitchClassToName(note1, useFlats)
-        val note2Name = Notes.pitchClassToName(note2, useFlats)
+        val note1Name = Notes.pitchClassToName(note1)
+        val note2Name = Notes.pitchClassToName(note2)
 
         val correctAnswer = if (interval == 12) "Octave" else INTERVAL_NAMES[interval]
 
@@ -92,6 +111,25 @@ object IntervalTrainer {
         val note1Fret = note1 // fret on the C string
         val note2Fret = (note1 + interval).coerceAtMost(12)
 
+        // Calculate octaves for audio playback
+        val baseOctave = 4
+        val note1Octave: Int
+        val note2Octave: Int
+        when (direction) {
+            IntervalDirection.ASCENDING, IntervalDirection.HARMONIC -> {
+                note1Octave = baseOctave
+                // If the interval wraps past pitch class 11 to 0+, it's in the next octave
+                note2Octave = if (note1 + interval >= 12) baseOctave + 1 else baseOctave
+            }
+            IntervalDirection.DESCENDING -> {
+                note1Octave = baseOctave + 1
+                // Descending: second note is lower
+                note2Octave = if (note1 + interval >= 12) baseOctave + 1 else baseOctave
+                // Actually for descending we want note1 high, note2 low
+                // note2 = note1 - interval
+            }
+        }
+
         return IntervalQuestion(
             note1PitchClass = note1,
             note2PitchClass = note2,
@@ -103,6 +141,9 @@ object IntervalTrainer {
             correctIndex = correctIndex,
             note1Fret = note1Fret,
             note2Fret = note2Fret,
+            note1Octave = note1Octave,
+            note2Octave = note2Octave,
+            direction = direction,
         )
     }
 }

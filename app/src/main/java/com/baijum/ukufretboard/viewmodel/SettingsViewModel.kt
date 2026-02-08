@@ -115,7 +115,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             .putBoolean(KEY_STRUM_DOWN, s.sound.strumDown)
             .putBoolean(KEY_PLAY_ON_TAP, s.sound.playOnTap)
             // Display
-            .putBoolean(KEY_USE_FLATS, s.display.useFlats)
             .putString(KEY_THEME_MODE, s.display.themeMode.name)
             // Tuning
             .putString(KEY_TUNING, s.tuning.tuning.name)
@@ -139,7 +138,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 playOnTap = prefs.getBoolean(KEY_PLAY_ON_TAP, false),
             ),
             display = DisplaySettings(
-                useFlats = prefs.getBoolean(KEY_USE_FLATS, false),
                 themeMode = try {
                     ThemeMode.valueOf(prefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)!!)
                 } catch (_: Exception) {
@@ -170,7 +168,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_STRUM_DELAY = "strum_delay_ms"
         private const val KEY_STRUM_DOWN = "strum_down"
         private const val KEY_PLAY_ON_TAP = "play_on_tap"
-        private const val KEY_USE_FLATS = "use_flats"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_TUNING = "tuning"
         private const val KEY_LEFT_HANDED = "left_handed"

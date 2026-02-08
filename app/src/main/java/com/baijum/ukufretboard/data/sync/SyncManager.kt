@@ -86,7 +86,6 @@ class SyncManager(
             strumDelayMs = settings.sound.strumDelayMs,
             strumDown = settings.sound.strumDown,
             playOnTap = settings.sound.playOnTap,
-            useFlats = settings.display.useFlats,
             themeMode = settings.display.themeMode.name,
             tuning = settings.tuning.tuning.name,
             leftHanded = settings.fretboard.leftHanded,
@@ -137,7 +136,6 @@ class SyncManager(
                 playOnTap = s.playOnTap,
             ),
             display = DisplaySettings(
-                useFlats = s.useFlats,
                 themeMode = try {
                     ThemeMode.valueOf(s.themeMode)
                 } catch (_: Exception) {

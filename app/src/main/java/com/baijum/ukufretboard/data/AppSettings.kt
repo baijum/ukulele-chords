@@ -45,14 +45,11 @@ enum class ThemeMode(val label: String) {
 }
 
 /**
- * Settings for display preferences (note naming, theme).
+ * Settings for display preferences (theme).
  *
- * @property useFlats When true, note names use flats (Db, Eb, Gb, Ab, Bb)
- *   instead of sharps (C#, D#, F#, G#, A#).
  * @property themeMode The app color theme: Light, Dark, or follow the System setting.
  */
 data class DisplaySettings(
-    val useFlats: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
 )
 

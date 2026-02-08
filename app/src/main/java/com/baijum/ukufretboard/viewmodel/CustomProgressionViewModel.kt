@@ -34,23 +34,54 @@ class CustomProgressionViewModel(application: Application) : AndroidViewModel(ap
      * Creates and saves a new custom progression.
      *
      * @param name User-provided name for the progression.
+     * @param description User-provided description for the progression.
      * @param degrees The sequence of chord degrees.
      * @param scaleType The scale type (Major/Minor).
      */
     fun create(
         name: String,
+        description: String,
         degrees: List<ChordDegree>,
         scaleType: ScaleType,
     ) {
         val custom = CustomProgression(
             progression = Progression(
                 name = name,
-                description = "Custom progression",
+                description = description.ifBlank { "Custom progression" },
                 degrees = degrees,
                 scaleType = scaleType,
             ),
         )
         repository.save(custom)
+        refresh()
+    }
+
+    /**
+     * Updates an existing custom progression, preserving its ID and creation time.
+     *
+     * @param id The ID of the progression to update.
+     * @param name Updated name.
+     * @param description Updated description.
+     * @param degrees Updated chord degree sequence.
+     * @param scaleType Updated scale type (Major/Minor).
+     */
+    fun update(
+        id: String,
+        name: String,
+        description: String,
+        degrees: List<ChordDegree>,
+        scaleType: ScaleType,
+    ) {
+        val existing = _progressions.value.find { it.id == id } ?: return
+        val updated = existing.copy(
+            progression = Progression(
+                name = name,
+                description = description.ifBlank { "Custom progression" },
+                degrees = degrees,
+                scaleType = scaleType,
+            ),
+        )
+        repository.save(updated)
         refresh()
     }
 

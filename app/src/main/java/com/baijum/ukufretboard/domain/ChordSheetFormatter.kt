@@ -98,18 +98,16 @@ object ChordSheetFormatter {
      *
      * @param progression The progression to format.
      * @param keyRoot The root pitch class (0–11).
-     * @param useFlats Whether to use flat note names.
      * @return Formatted progression string.
      */
     fun formatProgression(
         progression: Progression,
         keyRoot: Int,
-        useFlats: Boolean = false,
     ): String {
-        val keyName = Notes.pitchClassToName(keyRoot, useFlats)
+        val keyName = Notes.enharmonicForKey(keyRoot, keyRoot)
         val chords = progression.degrees.joinToString(" \u2013 ") { degree ->
             val chordRoot = (keyRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
-            Notes.pitchClassToName(chordRoot, useFlats) + degree.quality
+            Notes.enharmonicForKey(chordRoot, keyRoot) + degree.quality
         }
         val numerals = progression.degrees.joinToString(" \u2013 ") { it.numeral }
         return "${progression.name} in $keyName:\n$numerals\n$chords"

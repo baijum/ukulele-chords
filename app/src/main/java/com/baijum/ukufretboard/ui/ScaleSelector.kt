@@ -37,7 +37,6 @@ import com.baijum.ukufretboard.viewmodel.ScaleOverlayState
  * Shows a root note selector and scale type selector when expanded.
  *
  * @param state The current scale overlay state.
- * @param useFlats Whether to use flat note names.
  * @param onRootChanged Callback when the scale root note is changed.
  * @param onScaleChanged Callback when the scale type is changed.
  * @param onToggle Callback to toggle the overlay on/off.
@@ -46,7 +45,6 @@ import com.baijum.ukufretboard.viewmodel.ScaleOverlayState
 @Composable
 fun ScaleSelector(
     state: ScaleOverlayState,
-    useFlats: Boolean = false,
     tuningPitchClasses: List<Int> = listOf(7, 0, 4, 9),
     onRootChanged: (Int) -> Unit,
     onScaleChanged: (Scale) -> Unit,
@@ -70,7 +68,7 @@ fun ScaleSelector(
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
 
-                val noteNames = if (useFlats) Notes.NOTE_NAMES_FLAT else Notes.NOTE_NAMES_SHARP
+                val noteNames = Notes.NOTE_NAMES_STANDARD
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -187,7 +185,7 @@ fun ScaleSelector(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         diatonicChords.forEach { chord ->
-                            val chordName = ScaleChords.formatChord(chord, useFlats)
+                            val chordName = ScaleChords.formatChord(chord, state.root)
                             FilterChip(
                                 selected = false,
                                 onClick = { onChordTapped(chord) },

@@ -58,10 +58,9 @@ object ChordInfo {
      *
      * @param root The root [Note] of the chord.
      * @param notes All unique notes in the chord.
-     * @param useFlats Whether to use flat names for note display.
      * @return A formatted string showing each note with its interval role.
      */
-    fun buildIntervalBreakdown(root: Note, notes: List<Note>, useFlats: Boolean = false): String {
+    fun buildIntervalBreakdown(root: Note, notes: List<Note>): String {
         return notes
             .map { note ->
                 val interval = (note.pitchClass - root.pitchClass + Notes.PITCH_CLASS_COUNT) %
@@ -72,11 +71,9 @@ object ChordInfo {
             .sortedBy { entry ->
                 // Sort by interval value for consistent ordering
                 val noteName = entry.substringBefore(" (")
-                val pc = if (useFlats) {
-                    Notes.NOTE_NAMES_FLAT.indexOf(noteName)
-                } else {
-                    Notes.NOTE_NAMES_SHARP.indexOf(noteName)
-                }
+                val pc = Notes.NOTE_NAMES_STANDARD.indexOf(noteName).takeIf { it >= 0 }
+                    ?: Notes.NOTE_NAMES_SHARP.indexOf(noteName).takeIf { it >= 0 }
+                    ?: Notes.NOTE_NAMES_FLAT.indexOf(noteName)
                 (pc - root.pitchClass + Notes.PITCH_CLASS_COUNT) % Notes.PITCH_CLASS_COUNT
             }
             .joinToString("  ")
@@ -282,17 +279,15 @@ object ChordInfo {
      * @param chordName The chord name (e.g., "C", "Am7").
      * @param inversion The detected inversion.
      * @param bassPc The pitch class of the bass note.
-     * @param useFlats Whether to use flat note names.
      * @return The chord name with optional slash bass notation.
      */
     fun slashNotation(
         chordName: String,
         inversion: Inversion,
         bassPc: Int,
-        useFlats: Boolean = false,
     ): String {
         if (inversion == Inversion.ROOT) return chordName
-        val bassName = Notes.pitchClassToName(bassPc, useFlats)
+        val bassName = Notes.pitchClassToName(bassPc)
         return "$chordName/$bassName"
     }
 }

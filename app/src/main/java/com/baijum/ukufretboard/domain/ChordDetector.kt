@@ -47,7 +47,7 @@ object ChordDetector {
      *   same note on different strings).
      * @return A [DetectionResult] describing what was detected.
      */
-    fun detect(pitchClasses: List<Int>, useFlats: Boolean = false): DetectionResult {
+    fun detect(pitchClasses: List<Int>): DetectionResult {
         val uniquePitchClasses = pitchClasses.distinct()
 
         return when (uniquePitchClasses.size) {
@@ -55,16 +55,16 @@ object ChordDetector {
             1 -> {
                 val pc = uniquePitchClasses.first()
                 DetectionResult.SingleNote(
-                    Note(pitchClass = pc, name = Notes.pitchClassToName(pc, useFlats))
+                    Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
                 )
             }
             2 -> {
                 val notes = uniquePitchClasses.map {
-                    Note(pitchClass = it, name = Notes.pitchClassToName(it, useFlats))
+                    Note(pitchClass = it, name = Notes.pitchClassToName(it))
                 }
                 DetectionResult.Interval(notes)
             }
-            else -> findChord(uniquePitchClasses, useFlats)
+            else -> findChord(uniquePitchClasses)
         }
     }
 
@@ -87,7 +87,7 @@ object ChordDetector {
      * @param uniquePitchClasses A list of 3 or more distinct pitch class integers.
      * @return [DetectionResult.ChordFound] if a match is found, or [DetectionResult.NoMatch].
      */
-    private fun findChord(uniquePitchClasses: List<Int>, useFlats: Boolean): DetectionResult {
+    private fun findChord(uniquePitchClasses: List<Int>): DetectionResult {
         val pitchClassSet = uniquePitchClasses.toSet()
 
         for (candidateRoot in uniquePitchClasses) {
@@ -101,10 +101,10 @@ object ChordDetector {
                 if (intervals == formula.intervals) {
                     val rootNote = Note(
                         pitchClass = candidateRoot,
-                        name = Notes.pitchClassToName(candidateRoot, useFlats),
+                        name = Notes.pitchClassToName(candidateRoot),
                     )
                     val chordNotes = uniquePitchClasses.map {
-                        Note(pitchClass = it, name = Notes.pitchClassToName(it, useFlats))
+                        Note(pitchClass = it, name = Notes.pitchClassToName(it))
                     }
                     return DetectionResult.ChordFound(
                         ChordResult(
@@ -121,7 +121,7 @@ object ChordDetector {
 
         // No formula matched any candidate root
         val notes = uniquePitchClasses.map {
-            Note(pitchClass = it, name = Notes.pitchClassToName(it, useFlats))
+            Note(pitchClass = it, name = Notes.pitchClassToName(it))
         }
         return DetectionResult.NoMatch(notes)
     }

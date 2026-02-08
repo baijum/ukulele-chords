@@ -56,14 +56,17 @@ object QuizGenerator {
     fun generate(category: QuizCategory? = null): QuizQuestion {
         val cat = category ?: QuizCategory.entries.random()
         return when (cat) {
-            QuizCategory.INTERVALS -> generateIntervalQuestion()
-            QuizCategory.CHORDS -> generateChordQuestion()
-            QuizCategory.KEYS -> generateKeyQuestion()
-            QuizCategory.SCALES -> generateScaleQuestion()
-            QuizCategory.PROGRESSIONS -> generateProgressionQuestion()
+            QuizCategory.INTERVALS -> if ((0..1).random() == 0) generateIntervalQuestion() else generateSemitoneCountQuestion()
+            QuizCategory.CHORDS -> if ((0..1).random() == 0) generateChordQuestion() else generateChordNotesQuestion()
+            QuizCategory.KEYS -> if ((0..1).random() == 0) generateKeyQuestion() else generateRelativeMinorQuestion()
+            QuizCategory.SCALES -> if ((0..1).random() == 0) generateScaleQuestion() else generateScalePatternQuestion()
+            QuizCategory.PROGRESSIONS -> if ((0..1).random() == 0) generateProgressionQuestion() else generateChordQualityQuestion()
         }
     }
 
+    // ── Interval Questions ──────────────────────────────────────────
+
+    /** "What interval is X to Y?" */
     private fun generateIntervalQuestion(): QuizQuestion {
         val root = (0..11).random()
         val interval = (1..11).random()
@@ -88,6 +91,29 @@ object QuizGenerator {
         )
     }
 
+    /** "How many semitones in a [interval name]?" */
+    private fun generateSemitoneCountQuestion(): QuizQuestion {
+        val interval = (1..11).random()
+        val intervalName = INTERVAL_NAMES[interval]
+        val correctAnswer = "$interval"
+
+        // Generate 3 nearby wrong answers
+        val wrong = ((1..11).toList() - interval).shuffled().take(3).map { "$it" }
+        val options = (wrong + correctAnswer).shuffled()
+        val correctIndex = options.indexOf(correctAnswer)
+
+        return QuizQuestion(
+            category = QuizCategory.INTERVALS,
+            question = "How many semitones in a $intervalName?",
+            options = options,
+            correctIndex = correctIndex,
+            explanation = "A $intervalName spans $interval semitone${if (interval != 1) "s" else ""}.",
+        )
+    }
+
+    // ── Chord Questions ─────────────────────────────────────────────
+
+    /** "What chord type has the formula X?" */
     private fun generateChordQuestion(): QuizQuestion {
         val formulas = ChordFormulas.ALL.filter { it.intervals.size <= 4 }
         val formula = formulas.random()
@@ -209,6 +235,126 @@ object QuizGenerator {
             options = options,
             correctIndex = correctIndex,
             explanation = "In $rootName major, the ${degree.numeral} chord is $correctAnswer.",
+        )
+    }
+
+    /** "Is the [numeral] chord in a major key major or minor?" */
+    private fun generateChordQualityQuestion(): QuizQuestion {
+        val degrees = Progressions.diatonicDegrees(com.baijum.ukufretboard.data.ScaleType.MAJOR)
+        val degreeIndex = (0..6).random()
+        val degree = degrees[degreeIndex]
+        val quality = when {
+            degree.quality.isEmpty() -> "Major"
+            degree.quality == "m" -> "Minor"
+            degree.quality == "dim" -> "Diminished"
+            else -> degree.quality
+        }
+        val correctAnswer = quality
+
+        val allQualities = listOf("Major", "Minor", "Diminished").filter { it != quality }
+        val wrong = allQualities + listOf("Augmented").take(3 - allQualities.size)
+        val options = (wrong.take(3) + correctAnswer).shuffled()
+        val correctIndex = options.indexOf(correctAnswer)
+
+        return QuizQuestion(
+            category = QuizCategory.PROGRESSIONS,
+            question = "In a major key, what quality is the ${degree.numeral} chord?",
+            options = options,
+            correctIndex = correctIndex,
+            explanation = "In a major key, the ${degree.numeral} chord is $quality.",
+        )
+    }
+
+    // ── New Chord Question ──────────────────────────────────────────
+
+    /** "How many notes in a [chord type]?" */
+    private fun generateChordNotesQuestion(): QuizQuestion {
+        val formulas = ChordFormulas.ALL.filter { it.intervals.size in 3..5 }
+        val formula = formulas.random()
+        val noteCount = formula.intervals.size
+        val correctAnswer = "$noteCount notes"
+
+        val wrong = listOf(3, 4, 5, 6)
+            .filter { it != noteCount }
+            .shuffled()
+            .take(3)
+            .map { "$it notes" }
+        val options = (wrong + correctAnswer).shuffled()
+        val correctIndex = options.indexOf(correctAnswer)
+
+        return QuizQuestion(
+            category = QuizCategory.CHORDS,
+            question = "How many notes in a ${formula.quality} chord?",
+            options = options,
+            correctIndex = correctIndex,
+            explanation = "A ${formula.quality} chord (${formula.symbol}) has $noteCount notes.",
+        )
+    }
+
+    // ── New Key Question ────────────────────────────────────────────
+
+    /** "What is the relative minor of [key] major?" */
+    private fun generateRelativeMinorQuestion(): QuizQuestion {
+        val keySigs = KeySignatures.ALL.values.toList()
+        val keySig = keySigs.random()
+        val keyName = Notes.pitchClassToName(keySig.pitchClass)
+        val relMinorName = Notes.pitchClassToName(keySig.relativeMinorPitchClass)
+        val correctAnswer = "$relMinorName minor"
+
+        val wrong = keySigs
+            .filter { it.pitchClass != keySig.pitchClass }
+            .map { "${Notes.pitchClassToName(it.relativeMinorPitchClass)} minor" }
+            .distinct()
+            .shuffled()
+            .take(3)
+
+        val options = (wrong + correctAnswer).shuffled()
+        val correctIndex = options.indexOf(correctAnswer)
+
+        return QuizQuestion(
+            category = QuizCategory.KEYS,
+            question = "What is the relative minor of $keyName major?",
+            options = options,
+            correctIndex = correctIndex,
+            explanation = "The relative minor of $keyName major is $relMinorName minor (3 semitones below the root).",
+        )
+    }
+
+    // ── New Scale Question ──────────────────────────────────────────
+
+    /** "Which mode starts on the Nth degree of the major scale?" */
+    private fun generateScalePatternQuestion(): QuizQuestion {
+        val modes = listOf(
+            1 to "Ionian (Major)",
+            2 to "Dorian",
+            3 to "Phrygian",
+            4 to "Lydian",
+            5 to "Mixolydian",
+            6 to "Aeolian (Natural Minor)",
+            7 to "Locrian",
+        )
+        val (degree, modeName) = modes.random()
+        val correctAnswer = modeName
+
+        val wrong = modes
+            .filter { it.second != modeName }
+            .map { it.second }
+            .shuffled()
+            .take(3)
+
+        val options = (wrong + correctAnswer).shuffled()
+        val correctIndex = options.indexOf(correctAnswer)
+
+        val ordinal = when (degree) {
+            1 -> "1st"; 2 -> "2nd"; 3 -> "3rd"; else -> "${degree}th"
+        }
+
+        return QuizQuestion(
+            category = QuizCategory.SCALES,
+            question = "Which mode starts on the $ordinal degree of the major scale?",
+            options = options,
+            correctIndex = correctIndex,
+            explanation = "The $ordinal mode of the major scale is $modeName.",
         )
     }
 }

@@ -110,11 +110,13 @@ object KeySignatures {
      * Returns the diatonic chords (triads) for a major key, as Roman numeral labels
      * paired with the resolved chord name.
      *
+     * Note names are spelled correctly for the key (flats in flat keys,
+     * sharps in sharp keys).
+     *
      * @param pitchClass Root pitch class of the major key.
-     * @param useFlats Whether to display note names using flats.
      * @return List of pairs: (Roman numeral, resolved chord name).
      */
-    fun diatonicChordsForMajor(pitchClass: Int, useFlats: Boolean = false): List<Pair<String, String>> {
+    fun diatonicChordsForMajor(pitchClass: Int): List<Pair<String, String>> {
         val degrees = listOf(
             Triple(0, "", "I"),
             Triple(2, "m", "ii"),
@@ -126,7 +128,48 @@ object KeySignatures {
         )
         return degrees.map { (interval, quality, numeral) ->
             val root = (pitchClass + interval) % Notes.PITCH_CLASS_COUNT
-            numeral to (Notes.pitchClassToName(root, useFlats) + quality)
+            numeral to (Notes.enharmonicForKey(root, pitchClass) + quality)
         }
+    }
+
+    /**
+     * Returns the diatonic chords (triads) for a natural minor key.
+     *
+     * Natural minor harmony: i, ii°, III, iv, v, VI, VII
+     *
+     * @param pitchClass Root pitch class of the minor key.
+     * @return List of pairs: (Roman numeral, resolved chord name).
+     */
+    fun diatonicChordsForMinor(pitchClass: Int): List<Pair<String, String>> {
+        // Relative major is 3 semitones above the minor root
+        val relativeMajor = (pitchClass + 3) % Notes.PITCH_CLASS_COUNT
+        val degrees = listOf(
+            Triple(0, "m", "i"),
+            Triple(2, "dim", "ii\u00B0"),
+            Triple(3, "", "III"),
+            Triple(5, "m", "iv"),
+            Triple(7, "m", "v"),
+            Triple(8, "", "VI"),
+            Triple(10, "", "VII"),
+        )
+        return degrees.map { (interval, quality, numeral) ->
+            val root = (pitchClass + interval) % Notes.PITCH_CLASS_COUNT
+            numeral to (Notes.enharmonicForKey(root, relativeMajor) + quality)
+        }
+    }
+
+    /**
+     * Returns the pitch classes of the two closely related keys
+     * (adjacent on the Circle of Fifths).
+     *
+     * @param pitchClass The selected key's pitch class.
+     * @return Pair of (counter-clockwise neighbor, clockwise neighbor) pitch classes.
+     */
+    fun closelyRelatedKeys(pitchClass: Int): Pair<Int, Int> {
+        val index = CIRCLE_ORDER.indexOf(pitchClass)
+        if (index < 0) return Pair(pitchClass, pitchClass)
+        val ccw = CIRCLE_ORDER[(index - 1 + 12) % 12]
+        val cw = CIRCLE_ORDER[(index + 1) % 12]
+        return Pair(ccw, cw)
     }
 }

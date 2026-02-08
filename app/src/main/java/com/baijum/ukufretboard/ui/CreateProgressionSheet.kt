@@ -44,16 +44,22 @@ import com.baijum.ukufretboard.data.Progressions
 import com.baijum.ukufretboard.data.ScaleType
 
 /**
- * Modal bottom sheet for creating a custom chord progression.
+ * Modal bottom sheet for creating or editing a custom chord progression.
  *
  * The user selects a scale type, taps diatonic chord chips to build
  * a sequence, names the progression, and saves it. The progression
  * is stored as scale-degree intervals, so it works in any key.
  *
+ * When [initialName] and [initialDegrees] are provided, the sheet
+ * opens in edit mode with pre-filled values.
+ *
  * @param selectedRoot The currently selected key root (for preview chord names).
  * @param selectedScale The currently selected scale type.
- * @param useFlats Whether to display note names using flats.
- * @param onSave Callback with (name, degrees, scaleType) when the user saves.
+ * @param initialName Pre-filled name for edit mode (empty for create mode).
+ * @param initialDescription Pre-filled description for edit mode (empty for create mode).
+ * @param initialDegrees Pre-filled chord degrees for edit mode (empty for create mode).
+ * @param initialScaleType Pre-filled scale type for edit mode (null uses [selectedScale]).
+ * @param onSave Callback with (name, description, degrees, scaleType) when the user saves.
  * @param onDismiss Callback when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -61,15 +67,20 @@ import com.baijum.ukufretboard.data.ScaleType
 fun CreateProgressionSheet(
     selectedRoot: Int,
     selectedScale: ScaleType,
-    useFlats: Boolean,
-    onSave: (name: String, degrees: List<ChordDegree>, scaleType: ScaleType) -> Unit,
+    initialName: String = "",
+    initialDescription: String = "",
+    initialDegrees: List<ChordDegree> = emptyList(),
+    initialScaleType: ScaleType? = null,
+    onSave: (name: String, description: String, degrees: List<ChordDegree>, scaleType: ScaleType) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val isEditMode = initialName.isNotEmpty() || initialDegrees.isNotEmpty()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    var name by remember { mutableStateOf("") }
-    var scaleType by remember { mutableStateOf(selectedScale) }
-    val chosenDegrees = remember { mutableStateListOf<ChordDegree>() }
+    var name by remember { mutableStateOf(initialName) }
+    var description by remember { mutableStateOf(initialDescription) }
+    var scaleType by remember { mutableStateOf(initialScaleType ?: selectedScale) }
+    val chosenDegrees = remember { mutableStateListOf<ChordDegree>().also { it.addAll(initialDegrees) } }
 
     val availableDegrees = Progressions.diatonicDegrees(scaleType)
 
@@ -85,7 +96,7 @@ fun CreateProgressionSheet(
         ) {
             // Title
             Text(
-                text = "Create Progression",
+                text = if (isEditMode) "Edit Progression" else "Create Progression",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -97,6 +108,17 @@ fun CreateProgressionSheet(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Progression name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Description field
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description (optional)") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -147,7 +169,7 @@ fun CreateProgressionSheet(
             ) {
                 availableDegrees.forEach { degree ->
                     val chordRoot = (selectedRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
-                    val chordName = Notes.pitchClassToName(chordRoot, useFlats) + degree.quality
+                    val chordName = Notes.enharmonicForKey(chordRoot, selectedRoot) + degree.quality
                     SuggestionChip(
                         onClick = { chosenDegrees.add(degree) },
                         label = {
@@ -202,7 +224,7 @@ fun CreateProgressionSheet(
                             )
                         }
                         val chordRoot = (selectedRoot + degree.interval) % Notes.PITCH_CLASS_COUNT
-                        val chordName = Notes.pitchClassToName(chordRoot, useFlats) + degree.quality
+                        val chordName = Notes.enharmonicForKey(chordRoot, selectedRoot) + degree.quality
 
                         InputChip(
                             selected = false,
@@ -237,12 +259,12 @@ fun CreateProgressionSheet(
             // Save button
             Button(
                 onClick = {
-                    onSave(name.trim(), chosenDegrees.toList(), scaleType)
+                    onSave(name.trim(), description.trim(), chosenDegrees.toList(), scaleType)
                 },
                 enabled = name.isNotBlank() && chosenDegrees.size >= 2,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Save Progression")
+                Text(if (isEditMode) "Update Progression" else "Save Progression")
             }
 
             if (name.isNotBlank() && chosenDegrees.size < 2) {

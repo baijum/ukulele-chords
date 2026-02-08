@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.baijum.ukufretboard.data.CustomFingerpickingPattern
+import com.baijum.ukufretboard.data.CustomFingerpickingPatternRepository
 import com.baijum.ukufretboard.data.CustomStrumPattern
 import com.baijum.ukufretboard.data.CustomStrumPatternRepository
 import com.baijum.ukufretboard.data.Difficulty
@@ -66,17 +68,20 @@ private const val TAB_FINGERPICKING = 1
  * Tab showing a reference list of common ukulele strumming and fingerpicking patterns.
  *
  * A toggle at the top switches between Strumming and Fingerpicking views.
- * Users can create custom strumming patterns via the FAB.
+ * Users can create custom patterns via the FAB on either tab.
  */
 @Composable
 fun StrumPatternsTab(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val repo = remember { CustomStrumPatternRepository(context) }
-    var customPatterns by remember { mutableStateOf(repo.getAll()) }
+    val strumRepo = remember { CustomStrumPatternRepository(context) }
+    val fingerpickRepo = remember { CustomFingerpickingPatternRepository(context) }
+    var customStrumPatterns by remember { mutableStateOf(strumRepo.getAll()) }
+    var customFingerpickPatterns by remember { mutableStateOf(fingerpickRepo.getAll()) }
     var selectedTab by remember { mutableIntStateOf(TAB_STRUMMING) }
-    var showCreateSheet by remember { mutableStateOf(false) }
+    var showCreateStrumSheet by remember { mutableStateOf(false) }
+    var showCreateFingerpickSheet by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -111,7 +116,7 @@ fun StrumPatternsTab(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
                 ) {
                     // Custom patterns section
-                    if (customPatterns.isNotEmpty()) {
+                    if (customStrumPatterns.isNotEmpty()) {
                         item {
                             Text(
                                 text = "My Patterns",
@@ -120,12 +125,12 @@ fun StrumPatternsTab(
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        items(customPatterns, key = { it.id }) { custom ->
+                        items(customStrumPatterns, key = { it.id }) { custom ->
                             StrumPatternCard(
                                 pattern = custom.pattern,
                                 onDelete = {
-                                    repo.delete(custom.id)
-                                    customPatterns = repo.getAll()
+                                    strumRepo.delete(custom.id)
+                                    customStrumPatterns = strumRepo.getAll()
                                 },
                             )
                         }
@@ -147,6 +152,35 @@ fun StrumPatternsTab(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
                 ) {
+                    // Custom fingerpicking patterns section
+                    if (customFingerpickPatterns.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "My Patterns",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        items(customFingerpickPatterns, key = { it.id }) { custom ->
+                            FingerpickingPatternCard(
+                                pattern = custom.pattern,
+                                onDelete = {
+                                    fingerpickRepo.delete(custom.id)
+                                    customFingerpickPatterns = fingerpickRepo.getAll()
+                                },
+                            )
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Presets",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                     items(FingerpickingPatterns.ALL) { pattern ->
                         FingerpickingPatternCard(pattern = pattern)
                     }
@@ -154,26 +188,40 @@ fun StrumPatternsTab(
             }
         }
 
-        // FAB for creating custom patterns (only on Strumming tab)
-        if (selectedTab == TAB_STRUMMING) {
-            FloatingActionButton(
-                onClick = { showCreateSheet = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Create Pattern")
-            }
+        // FAB for creating custom patterns
+        FloatingActionButton(
+            onClick = {
+                when (selectedTab) {
+                    TAB_STRUMMING -> showCreateStrumSheet = true
+                    TAB_FINGERPICKING -> showCreateFingerpickSheet = true
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Create Pattern")
         }
     }
 
-    if (showCreateSheet) {
+    if (showCreateStrumSheet) {
         CreateStrumPatternSheet(
-            onDismiss = { showCreateSheet = false },
+            onDismiss = { showCreateStrumSheet = false },
             onSave = { pattern ->
-                repo.save(CustomStrumPattern(pattern = pattern))
-                customPatterns = repo.getAll()
-                showCreateSheet = false
+                strumRepo.save(CustomStrumPattern(pattern = pattern))
+                customStrumPatterns = strumRepo.getAll()
+                showCreateStrumSheet = false
+            },
+        )
+    }
+
+    if (showCreateFingerpickSheet) {
+        CreateFingerpickingPatternSheet(
+            onDismiss = { showCreateFingerpickSheet = false },
+            onSave = { pattern ->
+                fingerpickRepo.save(CustomFingerpickingPattern(pattern = pattern))
+                customFingerpickPatterns = fingerpickRepo.getAll()
+                showCreateFingerpickSheet = false
             },
         )
     }
@@ -334,9 +382,11 @@ private fun DifficultyBadge(difficulty: Difficulty) {
 
 /**
  * A card displaying a single fingerpicking pattern.
+ *
+ * @param onDelete If non-null, a delete button is shown (for custom patterns).
  */
 @Composable
-private fun FingerpickingPatternCard(pattern: FingerpickingPattern) {
+private fun FingerpickingPatternCard(pattern: FingerpickingPattern, onDelete: (() -> Unit)? = null) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -348,7 +398,7 @@ private fun FingerpickingPatternCard(pattern: FingerpickingPattern) {
         Column(
             modifier = Modifier.padding(16.dp),
         ) {
-            // Header: name + difficulty badge
+            // Header: name + difficulty badge + optional delete
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -359,8 +409,18 @@ private fun FingerpickingPatternCard(pattern: FingerpickingPattern) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
                 )
                 DifficultyBadge(difficulty = pattern.difficulty)
+                if (onDelete != null) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -609,6 +669,294 @@ private fun CreateStrumPatternSheet(
                                     beats = beats.toList(),
                                     notation = notation,
                                     suggestedBpm = 80..120,
+                                ),
+                            )
+                        }
+                    },
+                    enabled = patternName.isNotBlank(),
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+// ── Create custom fingerpicking pattern sheet ──────────────────────
+
+/**
+ * Bottom sheet for creating a custom fingerpicking pattern.
+ *
+ * Users select a step, then pick finger and string from chip rows below.
+ * Steps can be added or removed (2–8). Emphasis toggles accent individual steps.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateFingerpickingPatternSheet(
+    onDismiss: () -> Unit,
+    onSave: (FingerpickingPattern) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var patternName by remember { mutableStateOf("") }
+    val steps = remember {
+        mutableStateListOf(
+            FingerpickStep(Finger.THUMB, 0, emphasis = true),
+            FingerpickStep(Finger.THUMB, 1),
+            FingerpickStep(Finger.INDEX, 2),
+            FingerpickStep(Finger.MIDDLE, 3),
+        )
+    }
+    var selectedStepIndex by remember { mutableIntStateOf(0) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+        ) {
+            Text(
+                text = "Create Fingerpicking Pattern",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+
+            OutlinedTextField(
+                value = patternName,
+                onValueChange = { patternName = it },
+                label = { Text("Pattern Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Step count controls
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${steps.size} steps",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        onClick = {
+                            if (steps.size > 2) {
+                                if (selectedStepIndex >= steps.size - 1) {
+                                    selectedStepIndex = steps.size - 2
+                                }
+                                steps.removeAt(steps.lastIndex)
+                            }
+                        },
+                        enabled = steps.size > 2,
+                    ) {
+                        Text("−")
+                    }
+                    TextButton(
+                        onClick = {
+                            if (steps.size < 8) {
+                                steps.add(FingerpickStep(Finger.INDEX, 2))
+                            }
+                        },
+                        enabled = steps.size < 8,
+                    ) {
+                        Text("+")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Tap a step, then pick finger and string below",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Editable step slots
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                steps.forEachIndexed { index, step ->
+                    val isSelected = index == selectedStepIndex
+                    val fingerColor = when (step.finger) {
+                        Finger.THUMB -> MaterialTheme.colorScheme.primary
+                        Finger.INDEX -> MaterialTheme.colorScheme.secondary
+                        Finger.MIDDLE -> MaterialTheme.colorScheme.tertiary
+                        Finger.RING -> MaterialTheme.colorScheme.error
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(width = 40.dp, height = 48.dp)
+                            .background(
+                                if (step.emphasis) MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(8.dp),
+                            )
+                            .border(
+                                if (isSelected) 2.dp else 1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                RoundedCornerShape(8.dp),
+                            )
+                            .clickable { selectedStepIndex = index },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = step.finger.label,
+                                fontSize = if (step.emphasis) 16.sp else 14.sp,
+                                fontWeight = if (step.emphasis) FontWeight.ExtraBold else FontWeight.Normal,
+                                color = fingerColor,
+                            )
+                            Text(
+                                text = FingerpickingPatterns.STRING_NAMES[step.stringIndex],
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Emphasis toggles
+            Text(
+                text = "Tap below to toggle accent",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                steps.forEachIndexed { index, step ->
+                    Box(
+                        modifier = Modifier
+                            .size(width = 40.dp, height = 24.dp)
+                            .background(
+                                if (step.emphasis) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(4.dp),
+                            )
+                            .clickable {
+                                steps[index] = step.copy(emphasis = !step.emphasis)
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (step.emphasis) "!" else "·",
+                            fontSize = 12.sp,
+                            color = if (step.emphasis) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Finger selector
+            Text(
+                text = "Finger",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Finger.entries.forEach { finger ->
+                    val isActive = steps[selectedStepIndex].finger == finger
+                    FilterChip(
+                        selected = isActive,
+                        onClick = {
+                            steps[selectedStepIndex] =
+                                steps[selectedStepIndex].copy(finger = finger)
+                        },
+                        label = {
+                            Text(
+                                text = when (finger) {
+                                    Finger.THUMB -> "Thumb"
+                                    Finger.INDEX -> "Index"
+                                    Finger.MIDDLE -> "Middle"
+                                    Finger.RING -> "Ring"
+                                },
+                            )
+                        },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // String selector
+            Text(
+                text = "String",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                FingerpickingPatterns.STRING_NAMES.forEachIndexed { stringIndex, stringName ->
+                    val isActive = steps[selectedStepIndex].stringIndex == stringIndex
+                    FilterChip(
+                        selected = isActive,
+                        onClick = {
+                            steps[selectedStepIndex] =
+                                steps[selectedStepIndex].copy(stringIndex = stringIndex)
+                        },
+                        label = { Text(text = stringName) },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Save / Cancel buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(
+                    onClick = {
+                        if (patternName.isNotBlank()) {
+                            val notation = steps.joinToString(" ") { s ->
+                                val sn = FingerpickingPatterns.STRING_NAMES[s.stringIndex]
+                                "${s.finger.label}($sn)"
+                            }
+                            onSave(
+                                FingerpickingPattern(
+                                    name = patternName.trim(),
+                                    description = "Custom pattern",
+                                    difficulty = Difficulty.BEGINNER,
+                                    steps = steps.toList(),
+                                    notation = notation,
+                                    suggestedBpm = 60..100,
                                 ),
                             )
                         }

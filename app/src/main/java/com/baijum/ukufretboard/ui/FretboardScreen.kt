@@ -65,6 +65,7 @@ import com.baijum.ukufretboard.viewmodel.SettingsViewModel
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
 import com.baijum.ukufretboard.viewmodel.SyncViewModel
 import com.baijum.ukufretboard.viewmodel.TunerViewModel
+import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
 
 /** Navigation section indices. */
 private const val NAV_EXPLORER = 0
@@ -81,6 +82,12 @@ private const val NAV_CHORD_SUBS = 10
 private const val NAV_THEORY_LESSONS = 11
 private const val NAV_MELODY_NOTEPAD = 12
 private const val NAV_TUNER = 13
+private const val NAV_LEARNING_PROGRESS = 14
+private const val NAV_SCALE_CHORDS = 15
+private const val NAV_GLOSSARY = 16
+private const val NAV_NOTE_MAP = 17
+private const val NAV_NOTE_QUIZ = 18
+private const val NAV_CHORD_EAR = 19
 
 /**
  * Drawer navigation item metadata.
@@ -117,11 +124,17 @@ private fun drawerSections(): List<DrawerSection> = listOf(
         DrawerItem(NAV_THEORY_LESSONS, "Learn Theory", Icons.Filled.Info),
         DrawerItem(NAV_THEORY_QUIZ, "Theory Quiz", Icons.Filled.Create),
         DrawerItem(NAV_INTERVAL_TRAINER, "Interval Trainer", Icons.Filled.PlayArrow),
+        DrawerItem(NAV_NOTE_QUIZ, "Note Quiz", Icons.Filled.Search),
+        DrawerItem(NAV_CHORD_EAR, "Chord Ear Training", Icons.Filled.PlayArrow),
+        DrawerItem(NAV_LEARNING_PROGRESS, "Progress", Icons.Filled.Favorite),
     )),
     DrawerSection("Reference", listOf(
         DrawerItem(NAV_CAPO_GUIDE, "Capo Guide", Icons.Filled.Info),
         DrawerItem(NAV_CIRCLE_OF_FIFTHS, "Circle of Fifths", Icons.Filled.Refresh),
         DrawerItem(NAV_CHORD_SUBS, "Chord Substitutions", Icons.AutoMirrored.Filled.List),
+        DrawerItem(NAV_SCALE_CHORDS, "Chords in Scale", Icons.Filled.PlayArrow),
+        DrawerItem(NAV_NOTE_MAP, "Fretboard Notes", Icons.Filled.Search),
+        DrawerItem(NAV_GLOSSARY, "Glossary", Icons.Filled.Info),
     )),
 )
 
@@ -154,6 +167,7 @@ fun FretboardScreen(
     customProgressionViewModel: CustomProgressionViewModel = viewModel(),
     progressViewModel: com.baijum.ukufretboard.viewmodel.ProgressViewModel = viewModel(),
     tunerViewModel: TunerViewModel = viewModel(),
+    learningProgressViewModel: LearningProgressViewModel = viewModel(),
 ) {
     var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
@@ -188,12 +202,6 @@ fun FretboardScreen(
         fretboardViewModel.setSoundSettings(appSettings.sound)
     }
 
-    // Sync useFlats preference
-    LaunchedEffect(appSettings.display.useFlats) {
-        fretboardViewModel.setUseFlats(appSettings.display.useFlats)
-        libraryViewModel.setUseFlats(appSettings.display.useFlats)
-    }
-
     // Sync tuning settings
     LaunchedEffect(appSettings.tuning) {
         fretboardViewModel.setTuningSettings(appSettings.tuning)
@@ -205,7 +213,6 @@ fun FretboardScreen(
             viewModel = fretboardViewModel,
             soundEnabled = appSettings.sound.enabled,
             leftHanded = appSettings.fretboard.leftHanded,
-            useFlats = appSettings.display.useFlats,
             onExit = { showFullScreen = false },
         )
         return
@@ -295,14 +302,12 @@ fun FretboardScreen(
                         viewModel = fretboardViewModel,
                         soundEnabled = appSettings.sound.enabled,
                         leftHanded = appSettings.fretboard.leftHanded,
-                        useFlats = appSettings.display.useFlats,
                         onFullScreen = { showFullScreen = true },
                     )
                     NAV_TUNER -> TunerTab(
                         viewModel = tunerViewModel,
                         tuning = appSettings.tuning.tuning,
                         leftHanded = appSettings.fretboard.leftHanded,
-                        useFlats = appSettings.display.useFlats,
                         soundEnabled = appSettings.sound.enabled,
                     )
                     NAV_LIBRARY -> ChordLibraryTab(
@@ -348,12 +353,10 @@ fun FretboardScreen(
                         onToggleLearned = { root, quality ->
                             progressViewModel.toggleLearned(root, quality)
                         },
-                        useFlats = appSettings.display.useFlats,
                         leftHanded = appSettings.fretboard.leftHanded,
                     )
                     NAV_PATTERNS -> StrumPatternsTab()
                     NAV_PROGRESSIONS -> ProgressionsTab(
-                        useFlats = appSettings.display.useFlats,
                         leftHanded = appSettings.fretboard.leftHanded,
                         tuning = fretboardViewModel.tuning,
                         customProgressions = customProgressions,
@@ -367,8 +370,11 @@ fun FretboardScreen(
                             }
                             selectedSection = NAV_LIBRARY
                         },
-                        onSaveProgression = { name, degrees, scaleType ->
-                            customProgressionViewModel.create(name, degrees, scaleType)
+                        onSaveProgression = { name, description, degrees, scaleType ->
+                            customProgressionViewModel.create(name, description, degrees, scaleType)
+                        },
+                        onEditProgression = { id, name, description, degrees, scaleType ->
+                            customProgressionViewModel.update(id, name, description, degrees, scaleType)
                         },
                         onDeleteProgression = { id ->
                             customProgressionViewModel.delete(id)
@@ -386,7 +392,6 @@ fun FretboardScreen(
                             fretboardViewModel.applyVoicing(voicing)
                             selectedSection = NAV_EXPLORER
                         },
-                        useFlats = appSettings.display.useFlats,
                         leftHanded = appSettings.fretboard.leftHanded,
                     )
                     NAV_SONGBOOK -> SongbookTab(
@@ -396,18 +401,25 @@ fun FretboardScreen(
                         },
                     )
                     NAV_CAPO_GUIDE -> CapoGuideView()
-                    NAV_THEORY_QUIZ -> TheoryQuizView()
-                    NAV_INTERVAL_TRAINER -> IntervalTrainerView()
+                    NAV_THEORY_QUIZ -> TheoryQuizView(
+                        progressViewModel = learningProgressViewModel,
+                    )
+                    NAV_INTERVAL_TRAINER -> IntervalTrainerView(
+                        progressViewModel = learningProgressViewModel,
+                    )
                     NAV_CHORD_SUBS -> ChordSubstitutionsView()
-                    NAV_THEORY_LESSONS -> TheoryLessonsView()
+                    NAV_THEORY_LESSONS -> TheoryLessonsView(
+                        progressViewModel = learningProgressViewModel,
+                    )
+                    NAV_LEARNING_PROGRESS -> LearningProgressView(
+                        viewModel = learningProgressViewModel,
+                    )
                     NAV_MELODY_NOTEPAD -> MelodyNotepadView(
                         onPlayNote = { pitchClass ->
                             fretboardViewModel.playMelodyNote(pitchClass)
                         },
-                        useFlats = appSettings.display.useFlats,
                     )
                     NAV_CIRCLE_OF_FIFTHS -> CircleOfFifthsView(
-                        useFlats = appSettings.display.useFlats,
                         onChordTapped = { rootPitchClass, quality ->
                             libraryViewModel.selectRoot(rootPitchClass)
                             val formula = com.baijum.ukufretboard.data.ChordFormulas.ALL
@@ -419,6 +431,15 @@ fun FretboardScreen(
                             selectedSection = NAV_LIBRARY
                         },
                     )
+                    NAV_NOTE_QUIZ -> NoteQuizView(
+                        progressViewModel = learningProgressViewModel,
+                    )
+                    NAV_CHORD_EAR -> ChordEarTrainingView(
+                        progressViewModel = learningProgressViewModel,
+                    )
+                    NAV_SCALE_CHORDS -> ScaleChordView()
+                    NAV_GLOSSARY -> GlossaryView()
+                    NAV_NOTE_MAP -> FretboardNoteMapView()
                 }
             }
         }
@@ -500,7 +521,6 @@ private fun ExplorerTabContent(
     viewModel: FretboardViewModel,
     soundEnabled: Boolean,
     leftHanded: Boolean = false,
-    useFlats: Boolean = false,
     onFullScreen: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -514,7 +534,6 @@ private fun ExplorerTabContent(
         // Scale selector (collapsible)
         ScaleSelector(
             state = uiState.scaleOverlay,
-            useFlats = useFlats,
             tuningPitchClasses = currentTuning.map { it.openPitchClass },
             onRootChanged = viewModel::setScaleRoot,
             onScaleChanged = viewModel::setScale,
@@ -530,7 +549,6 @@ private fun ExplorerTabContent(
                         rootPitchClass = chord.rootPitchClass,
                         formula = formula,
                         tuning = currentTuning,
-                        useFlats = useFlats,
                     )
                     voicings.firstOrNull()?.let { viewModel.applyVoicing(it) }
                 }
@@ -593,7 +611,6 @@ private fun ExplorerTabContent(
             onPlayChord = viewModel::playChord,
             soundEnabled = soundEnabled,
             frets = fretsList,
-            useFlats = useFlats,
             tuning = currentTuning,
             modifier = Modifier.fillMaxWidth(),
         )

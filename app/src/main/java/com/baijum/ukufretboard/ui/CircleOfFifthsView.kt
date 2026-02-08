@@ -51,12 +51,10 @@ import kotlin.math.sqrt
  * shows its key signature, relative minor, and diatonic chords in a
  * detail panel below.
  *
- * @param useFlats Whether to display note names using flats.
  * @param onChordTapped Optional callback when a diatonic chord is tapped.
  */
 @Composable
 fun CircleOfFifthsView(
-    useFlats: Boolean = false,
     onChordTapped: ((rootPitchClass: Int, quality: String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -201,8 +199,8 @@ fun CircleOfFifthsView(
                     val pc = circleOrder[i]
                     val angle = -PI / 2 + (2 * PI * i / 12)
 
-                    // Major key label (outer)
-                    val majorName = Notes.pitchClassToName(pc, useFlats)
+                    // Major key label (outer) — use key-aware spelling
+                    val majorName = Notes.enharmonicForKey(pc, pc)
                     val isSelected = pc == selectedKey || (selectedKey != null && (selectedKey!! + 3) % 12 == pc)
                     drawKeyLabel(
                         centerX, centerY, labelOuterRadius.toDouble(), angle,
@@ -212,7 +210,7 @@ fun CircleOfFifthsView(
 
                     // Minor key label (inner)
                     val minorPc = (pc + 9) % 12
-                    val minorName = Notes.pitchClassToName(minorPc, useFlats) + "m"
+                    val minorName = Notes.enharmonicForKey(minorPc, minorPc, isMinor = true) + "m"
                     val isMinorSelected = minorPc == selectedKey
                     drawKeyLabel(
                         centerX, centerY, labelInnerRadius.toDouble(), angle,
@@ -229,7 +227,6 @@ fun CircleOfFifthsView(
         selectedKey?.let { pitchClass ->
             KeyDetailPanel(
                 pitchClass = pitchClass,
-                useFlats = useFlats,
                 onChordTapped = onChordTapped,
             )
         }
@@ -309,7 +306,6 @@ private fun DrawScope.drawKeyLabel(
 @Composable
 private fun KeyDetailPanel(
     pitchClass: Int,
-    useFlats: Boolean,
     onChordTapped: ((Int, String) -> Unit)?,
 ) {
     // Check if this pitch class is a major key or minor key
@@ -317,14 +313,14 @@ private fun KeyDetailPanel(
 
     // If we have a direct major key match
     if (keySig != null) {
-        MajorKeyDetail(keySig, useFlats, onChordTapped)
+        MajorKeyDetail(keySig, onChordTapped)
     } else {
         // This might be selected from the inner ring (minor key)
         // Find its relative major
         val relativeMajor = (pitchClass + 3) % 12
         val majorKeySig = KeySignatures.forKey(relativeMajor)
         if (majorKeySig != null) {
-            MinorKeyDetail(pitchClass, majorKeySig, useFlats, onChordTapped)
+            MinorKeyDetail(pitchClass, majorKeySig, onChordTapped)
         }
     }
 }
@@ -332,11 +328,10 @@ private fun KeyDetailPanel(
 @Composable
 private fun MajorKeyDetail(
     keySig: com.baijum.ukufretboard.data.KeySignature,
-    useFlats: Boolean,
     onChordTapped: ((Int, String) -> Unit)?,
 ) {
-    val keyName = Notes.pitchClassToName(keySig.pitchClass, useFlats)
-    val relMinorName = Notes.pitchClassToName(keySig.relativeMinorPitchClass, useFlats)
+    val keyName = Notes.enharmonicForKey(keySig.pitchClass, keySig.pitchClass)
+    val relMinorName = Notes.enharmonicForKey(keySig.relativeMinorPitchClass, keySig.relativeMinorPitchClass, isMinor = true)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -389,7 +384,7 @@ private fun MajorKeyDetail(
             )
             Spacer(modifier = Modifier.height(4.dp))
 
-            val diatonicChords = KeySignatures.diatonicChordsForMajor(keySig.pitchClass, useFlats)
+            val diatonicChords = KeySignatures.diatonicChordsForMajor(keySig.pitchClass)
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -437,8 +432,8 @@ private fun MajorKeyDetail(
                 val prevKey = KeySignatures.CIRCLE_ORDER[(circleIndex - 1 + 12) % 12]
                 val nextKey = KeySignatures.CIRCLE_ORDER[(circleIndex + 1) % 12]
                 Text(
-                    text = "${Notes.pitchClassToName(prevKey, useFlats)} major, " +
-                        "${Notes.pitchClassToName(nextKey, useFlats)} major, " +
+                    text = "${Notes.enharmonicForKey(prevKey, prevKey)} major, " +
+                        "${Notes.enharmonicForKey(nextKey, nextKey)} major, " +
                         "${relMinorName} minor",
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -451,11 +446,10 @@ private fun MajorKeyDetail(
 private fun MinorKeyDetail(
     minorPitchClass: Int,
     majorKeySig: com.baijum.ukufretboard.data.KeySignature,
-    useFlats: Boolean,
     onChordTapped: ((Int, String) -> Unit)?,
 ) {
-    val minorName = Notes.pitchClassToName(minorPitchClass, useFlats)
-    val majorName = Notes.pitchClassToName(majorKeySig.pitchClass, useFlats)
+    val minorName = Notes.enharmonicForKey(minorPitchClass, minorPitchClass, isMinor = true)
+    val majorName = Notes.enharmonicForKey(majorKeySig.pitchClass, majorKeySig.pitchClass)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -492,6 +486,67 @@ private fun MinorKeyDetail(
             )
             Text(
                 text = "$majorName major",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Diatonic chords for natural minor
+            Text(
+                text = "Diatonic Chords",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+
+            val diatonicChords = KeySignatures.diatonicChordsForMinor(minorPitchClass)
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                diatonicChords.forEach { (numeral, chordName) ->
+                    SuggestionChip(
+                        onClick = {
+                            if (onChordTapped != null) {
+                                val root = chordName.takeWhile { it.isLetter() || it == '#' || it == 'b' }
+                                val quality = chordName.removePrefix(root)
+                                val rootPc = Notes.NOTE_NAMES_SHARP.indexOf(root).takeIf { it >= 0 }
+                                    ?: Notes.NOTE_NAMES_FLAT.indexOf(root).takeIf { it >= 0 }
+                                    ?: return@SuggestionChip
+                                onChordTapped(rootPc, quality)
+                            }
+                        },
+                        label = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = numeral,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = chordName,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Closely related keys
+            val (prevKey, nextKey) = KeySignatures.closelyRelatedKeys(majorKeySig.pitchClass)
+            Text(
+                text = "Closely Related Keys",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "${Notes.enharmonicForKey(prevKey, prevKey)} major, " +
+                    "${Notes.enharmonicForKey(nextKey, nextKey)} major",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

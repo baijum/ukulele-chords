@@ -28,8 +28,8 @@ android {
         applicationId = "com.baijum.ukufretboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "4.3"
+        versionCode = 26
+        versionName = "4.10"
     }
 
     signingConfigs {

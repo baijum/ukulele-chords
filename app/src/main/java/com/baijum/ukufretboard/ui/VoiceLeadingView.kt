@@ -61,7 +61,6 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
  * @param onPlayVoicing Callback to play a single voicing (null if sound disabled).
  * @param onPlayAll Callback to play all voicings in sequence (null if sound disabled).
  * @param leftHanded Whether to mirror diagrams for left-handed players.
- * @param useFlats Whether to display note names using flats.
  * @param modifier Optional modifier.
  */
 @Composable
@@ -72,7 +71,6 @@ fun VoiceLeadingView(
     onPlayVoicing: ((ChordVoicing) -> Unit)?,
     onPlayAll: ((List<ChordVoicing>) -> Unit)?,
     leftHanded: Boolean = false,
-    useFlats: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var currentStep by remember { mutableIntStateOf(0) }
@@ -86,7 +84,6 @@ fun VoiceLeadingView(
         // Header
         VoiceLeadingHeader(
             path = path,
-            useFlats = useFlats,
             onBack = onBack,
         )
 
@@ -138,7 +135,6 @@ fun VoiceLeadingView(
                     fromVoicing = fromStep.voicing,
                     toVoicing = toStep.voicing,
                     tuning = tuning,
-                    useFlats = useFlats,
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -184,7 +180,6 @@ fun VoiceLeadingView(
 @Composable
 private fun VoiceLeadingHeader(
     path: VoiceLeading.Path,
-    useFlats: Boolean,
     onBack: () -> Unit,
 ) {
     Row(
@@ -206,7 +201,7 @@ private fun VoiceLeadingHeader(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Voice Leading in ${Notes.pitchClassToName(path.keyRoot, useFlats)}",
+                text = "Voice Leading in ${Notes.enharmonicForKey(path.keyRoot, path.keyRoot)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -392,7 +387,6 @@ private fun TransitionSummaryCard(
     fromVoicing: ChordVoicing,
     toVoicing: ChordVoicing,
     tuning: List<UkuleleString>,
-    useFlats: Boolean,
 ) {
     val commonCount = transition.commonToneIndices.size
     val distLabel = "${transition.totalDistance} fret${if (transition.totalDistance != 1) "s" else ""}"
@@ -423,12 +417,10 @@ private fun TransitionSummaryCard(
                 val isCommon = i in transition.commonToneIndices
 
                 val fromNoteName = Notes.pitchClassToName(
-                    (string.openPitchClass + fromFret) % Notes.PITCH_CLASS_COUNT,
-                    useFlats,
+                    (string.openPitchClass + fromFret) % Notes.PITCH_CLASS_COUNT
                 )
                 val toNoteName = Notes.pitchClassToName(
-                    (string.openPitchClass + toFret) % Notes.PITCH_CLASS_COUNT,
-                    useFlats,
+                    (string.openPitchClass + toFret) % Notes.PITCH_CLASS_COUNT
                 )
 
                 Row(
