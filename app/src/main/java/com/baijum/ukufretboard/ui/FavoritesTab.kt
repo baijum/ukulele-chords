@@ -4,24 +4,37 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -31,17 +44,13 @@ import com.baijum.ukufretboard.data.Notes
 import com.baijum.ukufretboard.domain.ChordVoicing
 import com.baijum.ukufretboard.viewmodel.FavoritesViewModel
 
+private const val FILTER_ALL = "__all__"
+private const val FILTER_UNFILED = "__unfiled__"
+
 /**
- * Tab displaying the user's saved favorite chord voicings.
+ * Tab displaying the user's saved favorite chord voicings, organized by folders.
  *
- * Shows a grid of chord diagrams that can be tapped to apply to the fretboard.
- * Displays an empty state message when no favorites are saved.
- *
- * @param viewModel The [FavoritesViewModel] managing favorites.
- * @param onVoicingSelected Callback when a favorite voicing is tapped.
- * @param useFlats Whether to use flat note names.
- * @param leftHanded Whether to render diagrams in left-handed mode.
- * @param modifier Optional modifier.
+ * Folder chips at the top filter the grid: All, Unfiled, and user-created folders.
  */
 @Composable
 fun FavoritesTab(
@@ -52,6 +61,10 @@ fun FavoritesTab(
     modifier: Modifier = Modifier,
 ) {
     val favorites by viewModel.favorites.collectAsState()
+    val folders by viewModel.folders.collectAsState()
+    var selectedFilter by remember { mutableStateOf(FILTER_ALL) }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var showMoveDialog by remember { mutableStateOf<FavoriteVoicing?>(null) }
 
     if (favorites.isEmpty()) {
         // Empty state
@@ -76,48 +89,178 @@ fun FavoritesTab(
             )
         }
     } else {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = modifier
-                .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(favorites) { favorite ->
-                val voicing = viewModel.toChordVoicing(favorite, useFlats)
-                val chordName = Notes.pitchClassToName(favorite.rootPitchClass, useFlats) + favorite.chordSymbol
+        Column(modifier = modifier.fillMaxSize()) {
+            // Folder chips
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item {
+                    FilterChip(
+                        selected = selectedFilter == FILTER_ALL,
+                        onClick = { selectedFilter = FILTER_ALL },
+                        label = { Text("All (${favorites.size})") },
+                    )
+                }
+                item {
+                    val unfiledCount = favorites.count { it.folderId == null }
+                    FilterChip(
+                        selected = selectedFilter == FILTER_UNFILED,
+                        onClick = { selectedFilter = FILTER_UNFILED },
+                        label = { Text("Unfiled ($unfiledCount)") },
+                    )
+                }
+                items(folders) { folder ->
+                    val count = favorites.count { it.folderId == folder.id }
+                    FilterChip(
+                        selected = selectedFilter == folder.id,
+                        onClick = { selectedFilter = folder.id },
+                        label = { Text("${folder.name} ($count)") },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    viewModel.deleteFolder(folder.id)
+                                    if (selectedFilter == folder.id) selectedFilter = FILTER_ALL
+                                },
+                                modifier = Modifier.size(18.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Delete folder",
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                        },
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showCreateFolderDialog = true },
+                        label = { Text("+") },
+                    )
+                }
+            }
 
-                Box {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = chordName,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 4.dp),
-                        )
-                        ChordDiagramPreview(
-                            voicing = voicing,
-                            onClick = { onVoicingSelected(voicing) },
-                            leftHanded = leftHanded,
-                        )
-                    }
-                    // Remove from favorites button
-                    IconButton(
-                        onClick = { viewModel.removeFavorite(favorite) },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .size(28.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Favorite,
-                            contentDescription = "Remove from favorites",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(18.dp),
-                        )
+            // Filtered grid
+            val filtered = when (selectedFilter) {
+                FILTER_ALL -> favorites
+                FILTER_UNFILED -> favorites.filter { it.folderId == null }
+                else -> favorites.filter { it.folderId == selectedFilter }
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(filtered) { favorite ->
+                    val voicing = viewModel.toChordVoicing(favorite, useFlats)
+                    val chordName = Notes.pitchClassToName(favorite.rootPitchClass, useFlats) + favorite.chordSymbol
+
+                    Box {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = chordName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                            ChordDiagramPreview(
+                                voicing = voicing,
+                                onClick = { onVoicingSelected(voicing) },
+                                leftHanded = leftHanded,
+                            )
+                        }
+                        // Actions: remove + move to folder
+                        Row(modifier = Modifier.align(Alignment.TopEnd)) {
+                            if (folders.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { showMoveDialog = favorite },
+                                    modifier = Modifier.size(28.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Add,
+                                        contentDescription = "Move to folder",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = { viewModel.removeFavorite(favorite) },
+                                modifier = Modifier.size(28.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Favorite,
+                                    contentDescription = "Remove from favorites",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    // Create folder dialog
+    if (showCreateFolderDialog) {
+        var folderName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateFolderDialog = false },
+            title = { Text("New Folder") },
+            text = {
+                OutlinedTextField(
+                    value = folderName,
+                    onValueChange = { folderName = it },
+                    label = { Text("Folder name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (folderName.isNotBlank()) {
+                            viewModel.createFolder(folderName.trim())
+                            showCreateFolderDialog = false
+                        }
+                    },
+                    enabled = folderName.isNotBlank(),
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateFolderDialog = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    // Move to folder dialog
+    showMoveDialog?.let { favorite ->
+        AlertDialog(
+            onDismissRequest = { showMoveDialog = null },
+            title = { Text("Move to Folder") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = {
+                        viewModel.moveToFolder(favorite, null)
+                        showMoveDialog = null
+                    }) { Text("Unfiled") }
+                    folders.forEach { folder ->
+                        TextButton(onClick = {
+                            viewModel.moveToFolder(favorite, folder.id)
+                            showMoveDialog = null
+                        }) { Text(folder.name) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showMoveDialog = null }) { Text("Cancel") }
+            },
+        )
     }
 }

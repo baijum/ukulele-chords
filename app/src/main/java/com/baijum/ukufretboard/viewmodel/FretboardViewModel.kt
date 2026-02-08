@@ -44,6 +44,7 @@ data class ScaleOverlayState(
     val root: Int = 0,
     val scale: Scale? = null,
     val scaleNotes: Set<Int> = emptySet(),
+    val positionFretRange: IntRange? = null,
 )
 
 /**
@@ -110,14 +111,15 @@ class FretboardViewModel : ViewModel() {
 
         /**
          * Builds a tuning list for the given tuning variant.
-         * Only the G string octave differs between High-G and Low-G.
          */
-        fun buildTuning(variant: UkuleleTuning): List<UkuleleString> = listOf(
-            UkuleleString(name = "G", openPitchClass = 7, octave = variant.gStringOctave),
-            UkuleleString(name = "C", openPitchClass = 0, octave = 4),
-            UkuleleString(name = "E", openPitchClass = 4, octave = 4),
-            UkuleleString(name = "A", openPitchClass = 9, octave = 4),
-        )
+        fun buildTuning(variant: UkuleleTuning): List<UkuleleString> =
+            variant.stringNames.indices.map { i ->
+                UkuleleString(
+                    name = variant.stringNames[i],
+                    openPitchClass = variant.pitchClasses[i],
+                    octave = variant.octaves[i],
+                )
+            }
     }
 
     /**
@@ -281,8 +283,20 @@ class FretboardViewModel : ViewModel() {
                     scale = scale,
                     scaleNotes = notes,
                     enabled = true,
+                    positionFretRange = null,
                 )
             )
+        }
+    }
+
+    /**
+     * Sets the fret range filter for scale positions.
+     * Pass null to show all scale notes.
+     */
+    fun setScalePositionRange(fretRange: IntRange?) {
+        _uiState.update { current ->
+            val overlay = current.scaleOverlay
+            current.copy(scaleOverlay = overlay.copy(positionFretRange = fretRange))
         }
     }
 
@@ -295,7 +309,16 @@ class FretboardViewModel : ViewModel() {
      */
     fun getNoteAt(stringIndex: Int, fret: Int): Note {
         val openPitchClass = tuning[stringIndex].openPitchClass
-        return calculateNote(openPitchClass, fret, useFlats)
+        val pitchClass = (openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
+        val overlay = _uiState.value.scaleOverlay
+        val name = if (overlay.enabled && overlay.scale != null) {
+            // Use key-aware enharmonic spelling when a scale is active
+            val isMinor = overlay.scale.intervals.size > 2 && overlay.scale.intervals[2] == 3
+            Notes.enharmonicForKey(pitchClass, overlay.root, isMinor, useFlats)
+        } else {
+            Notes.pitchClassToName(pitchClass, useFlats)
+        }
+        return Note(pitchClass = pitchClass, name = name)
     }
 
     /**
@@ -330,6 +353,7 @@ class FretboardViewModel : ViewModel() {
                     notes = notes,
                     noteDurationMs = soundSettings.noteDurationMs,
                     strumDelayMs = soundSettings.strumDelayMs,
+                    volume = soundSettings.volume,
                 )
             }
         }
@@ -358,6 +382,7 @@ class FretboardViewModel : ViewModel() {
                 notes = notes,
                 noteDurationMs = soundSettings.noteDurationMs,
                 strumDelayMs = soundSettings.strumDelayMs,
+                volume = soundSettings.volume,
             )
         }
     }
@@ -389,6 +414,7 @@ class FretboardViewModel : ViewModel() {
                     notes = notes,
                     noteDurationMs = soundSettings.noteDurationMs,
                     strumDelayMs = soundSettings.strumDelayMs,
+                    volume = soundSettings.volume,
                 )
                 kotlinx.coroutines.delay(pauseMs)
             }
@@ -412,6 +438,7 @@ class FretboardViewModel : ViewModel() {
                 pitchClass = pitchClass,
                 octave = octave,
                 durationMs = soundSettings.noteDurationMs,
+                volume = soundSettings.volume,
             )
         }
     }
@@ -431,6 +458,7 @@ class FretboardViewModel : ViewModel() {
                 pitchClass = pitchClass,
                 octave = octave,
                 durationMs = soundSettings.noteDurationMs,
+                volume = soundSettings.volume,
             )
         }
     }

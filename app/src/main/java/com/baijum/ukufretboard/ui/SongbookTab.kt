@@ -32,14 +32,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.LinkAnnotation
@@ -295,10 +300,40 @@ private fun SheetViewer(
         } else {
             sheet.content
         }
+
+        // Auto-scroll state
+        var autoScrolling by remember { mutableStateOf(false) }
+        var scrollSpeed by remember { mutableFloatStateOf(1f) } // 1x, 2x, 3x
+        val scrollState = rememberScrollState()
+
+        // Auto-scroll effect
+        LaunchedEffect(autoScrolling, scrollSpeed) {
+            if (autoScrolling) {
+                while (autoScrolling) {
+                    scrollState.animateScrollTo(
+                        scrollState.value + scrollSpeed.toInt().coerceAtLeast(1),
+                        animationSpec = androidx.compose.animation.core.tween(
+                            durationMillis = 16,
+                            easing = androidx.compose.animation.core.LinearEasing,
+                        ),
+                    )
+                    delay(16L) // ~60fps
+                }
+            }
+        }
+
+        // Pause auto-scroll when user manually scrolls
+        LaunchedEffect(scrollState.isScrollInProgress) {
+            if (scrollState.isScrollInProgress && autoScrolling) {
+                autoScrolling = false
+            }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+                .fillMaxSize()
+                .verticalScroll(scrollState),
         ) {
             displayContent.lines().forEach { line ->
                 val segments = ChordParser.parseLine(line)
@@ -349,6 +384,37 @@ private fun SheetViewer(
                 }
             }
         }
+
+            // Auto-scroll controls overlay
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Speed chips (visible when scrolling)
+                if (autoScrolling) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf(1f to "1x", 2f to "2x", 3f to "3x").forEach { (speed, label) ->
+                            FilterChip(
+                                selected = scrollSpeed == speed,
+                                onClick = { scrollSpeed = speed },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
+                }
+                FloatingActionButton(
+                    onClick = { autoScrolling = !autoScrolling },
+                ) {
+                    Icon(
+                        imageVector = if (autoScrolling) Icons.Filled.Edit else Icons.Filled.PlayArrow,
+                        contentDescription = if (autoScrolling) "Stop scroll" else "Auto-scroll",
+                    )
+                }
+            }
+        } // Box
     }
 }
 

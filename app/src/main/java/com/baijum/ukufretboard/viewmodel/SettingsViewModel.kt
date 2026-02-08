@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.baijum.ukufretboard.data.AppSettings
 import com.baijum.ukufretboard.data.DisplaySettings
 import com.baijum.ukufretboard.data.FretboardSettings
+import com.baijum.ukufretboard.data.NotificationSettings
 import com.baijum.ukufretboard.data.SoundSettings
 import com.baijum.ukufretboard.data.ThemeMode
 import com.baijum.ukufretboard.data.TuningSettings
@@ -80,6 +81,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
+     * Updates the notification settings by applying a transformation function.
+     */
+    fun updateNotification(transform: (NotificationSettings) -> NotificationSettings) {
+        _settings.update { current ->
+            current.copy(notification = transform(current.notification)).also { saveSettings(it) }
+        }
+    }
+
+    /**
      * Replaces all settings with the given [AppSettings].
      * Used for sync/restore operations.
      */
@@ -99,6 +109,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         prefs.edit()
             // Sound
             .putBoolean(KEY_SOUND_ENABLED, s.sound.enabled)
+            .putFloat(KEY_VOLUME, s.sound.volume)
             .putInt(KEY_NOTE_DURATION, s.sound.noteDurationMs)
             .putInt(KEY_STRUM_DELAY, s.sound.strumDelayMs)
             .putBoolean(KEY_STRUM_DOWN, s.sound.strumDown)
@@ -110,6 +121,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             .putString(KEY_TUNING, s.tuning.tuning.name)
             // Fretboard
             .putBoolean(KEY_LEFT_HANDED, s.fretboard.leftHanded)
+            // Notification
+            .putBoolean(KEY_CHORD_OF_DAY_ENABLED, s.notification.chordOfDayEnabled)
             .apply()
     }
 
@@ -119,6 +132,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         return AppSettings(
             sound = SoundSettings(
                 enabled = prefs.getBoolean(KEY_SOUND_ENABLED, true),
+                volume = prefs.getFloat(KEY_VOLUME, SoundSettings.DEFAULT_VOLUME),
                 noteDurationMs = prefs.getInt(KEY_NOTE_DURATION, SoundSettings.DEFAULT_NOTE_DURATION_MS),
                 strumDelayMs = prefs.getInt(KEY_STRUM_DELAY, SoundSettings.DEFAULT_STRUM_DELAY_MS),
                 strumDown = prefs.getBoolean(KEY_STRUM_DOWN, true),
@@ -142,12 +156,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             fretboard = FretboardSettings(
                 leftHanded = prefs.getBoolean(KEY_LEFT_HANDED, false),
             ),
+            notification = NotificationSettings(
+                chordOfDayEnabled = prefs.getBoolean(KEY_CHORD_OF_DAY_ENABLED, false),
+            ),
         )
     }
 
     companion object {
         private const val PREFS_NAME = "app_settings"
         private const val KEY_SOUND_ENABLED = "sound_enabled"
+        private const val KEY_VOLUME = "sound_volume"
         private const val KEY_NOTE_DURATION = "note_duration_ms"
         private const val KEY_STRUM_DELAY = "strum_delay_ms"
         private const val KEY_STRUM_DOWN = "strum_down"
@@ -156,5 +174,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_TUNING = "tuning"
         private const val KEY_LEFT_HANDED = "left_handed"
+        private const val KEY_CHORD_OF_DAY_ENABLED = "chord_of_day_enabled"
     }
 }

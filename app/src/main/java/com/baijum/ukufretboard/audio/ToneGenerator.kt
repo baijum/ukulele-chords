@@ -148,16 +148,18 @@ object ToneGenerator {
         pitchClass: Int,
         octave: Int,
         durationMs: Int = DEFAULT_NOTE_DURATION_MS,
+        volume: Float = 1f,
     ) {
         val sp = soundPool ?: return
         val sampleId = sampleIds[pitchClass % 12]
         if (sampleId == 0) return
 
         val rate = playbackRate(octave)
+        val vol = volume.coerceIn(0f, 1f)
 
         playbackMutex.withLock {
             withContext(Dispatchers.Default) {
-                sp.play(sampleId, 1f, 1f, 1, 0, rate)
+                sp.play(sampleId, vol, vol, 1, 0, rate)
                 delay(durationMs.toLong())
             }
         }
@@ -178,9 +180,11 @@ object ToneGenerator {
         notes: List<Pair<Int, Int>>,
         noteDurationMs: Int = DEFAULT_NOTE_DURATION_MS,
         strumDelayMs: Int = DEFAULT_STRUM_DELAY_MS,
+        volume: Float = 1f,
     ) {
         if (notes.isEmpty()) return
         val sp = soundPool ?: return
+        val vol = volume.coerceIn(0f, 1f)
 
         playbackMutex.withLock {
             withContext(Dispatchers.Default) {
@@ -188,7 +192,7 @@ object ToneGenerator {
                     val sampleId = sampleIds[pitchClass % 12]
                     if (sampleId != 0) {
                         val rate = playbackRate(octave)
-                        sp.play(sampleId, 1f, 1f, 1, 0, rate)
+                        sp.play(sampleId, vol, vol, 1, 0, rate)
                     }
                     if (index < notes.size - 1) {
                         delay(strumDelayMs.toLong())

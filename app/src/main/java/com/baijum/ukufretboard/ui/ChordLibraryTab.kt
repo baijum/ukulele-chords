@@ -21,8 +21,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,6 +79,8 @@ fun ChordLibraryTab(
     onVoicingLongPressed: ((ChordVoicing) -> Unit)? = null,
     isFavorite: ((ChordVoicing) -> Boolean)? = null,
     onToggleFavorite: ((ChordVoicing) -> Unit)? = null,
+    isLearned: ((Int, String) -> Boolean)? = null,
+    onToggleLearned: ((Int, String) -> Unit)? = null,
     onPlayVoicing: ((ChordVoicing) -> Unit)? = null,
     onPlayVoicingsSequentially: ((List<ChordVoicing>) -> Unit)? = null,
     useFlats: Boolean = false,
@@ -278,6 +282,8 @@ fun ChordLibraryTab(
                     onVoicingLongPressed = onVoicingLongPressed,
                     isFavorite = isFavorite,
                     onToggleFavorite = onToggleFavorite,
+                    isLearned = isLearned,
+                    onToggleLearned = onToggleLearned,
                     leftHanded = leftHanded,
                     rootPitchClass = uiState.selectedRoot,
                     formula = uiState.selectedFormula,
@@ -292,6 +298,8 @@ fun ChordLibraryTab(
                 onVoicingLongPressed = onVoicingLongPressed,
                 isFavorite = isFavorite,
                 onToggleFavorite = onToggleFavorite,
+                isLearned = isLearned,
+                onToggleLearned = onToggleLearned,
                 leftHanded = leftHanded,
                 rootPitchClass = uiState.selectedRoot,
                 formula = uiState.selectedFormula,
@@ -634,6 +642,8 @@ private fun VoicingGrid(
     onVoicingLongPressed: ((ChordVoicing) -> Unit)? = null,
     isFavorite: ((ChordVoicing) -> Boolean)? = null,
     onToggleFavorite: ((ChordVoicing) -> Unit)? = null,
+    isLearned: ((Int, String) -> Boolean)? = null,
+    onToggleLearned: ((Int, String) -> Unit)? = null,
     leftHanded: Boolean = false,
     rootPitchClass: Int = 0,
     formula: ChordFormula? = null,
@@ -693,6 +703,23 @@ private fun VoicingGrid(
                                 imageVector = if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = if (favorited) "Remove from favorites" else "Add to favorites",
                                 tint = if (favorited) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                    // Learned checkmark in the top-start corner
+                    if (onToggleLearned != null && formula != null) {
+                        val learned = isLearned?.invoke(rootPitchClass, formula.symbol) == true
+                        IconButton(
+                            onClick = { onToggleLearned(rootPitchClass, formula.symbol) },
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .size(28.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (learned) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                                contentDescription = if (learned) "Unmark as learned" else "Mark as learned",
+                                tint = if (learned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                 modifier = Modifier.size(18.dp),
                             )
                         }

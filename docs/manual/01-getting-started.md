@@ -1,0 +1,45 @@
+# Getting Started
+
+## Installing the App
+
+Ukulele Companion is available as an Android APK. Install it on any device running Android 8.0 (Oreo) or later. No account or login is required — just install and open.
+
+## First Launch
+
+When you open the app for the first time, you land on the **Explorer** tab. This is the interactive fretboard where you can tap fret positions and the app will detect chords for you.
+
+![Explorer screen on first launch](screenshots/explorer-fretboard.png)
+
+## Navigating the App
+
+The app uses a **navigation drawer** to move between sections. Tap the hamburger menu icon (three horizontal lines) in the top-left corner to open the drawer.
+
+![Navigation drawer](screenshots/navigation-drawer.png)
+
+The drawer contains the following sections:
+
+| Section | What It Does |
+|---------|-------------|
+| **Explorer** | Interactive fretboard with chord detection |
+| **Chords** | Browse the chord library by root and type |
+| **Patterns** | Strumming and fingerpicking pattern reference |
+| **Progressions** | Common chord progressions in any key |
+| **Favorites** | Your saved chord voicings |
+| **Songs** | Personal songbook with chord sheets |
+| **Capo Guide** | Educational capo reference |
+| **Circle of Fifths** | Visual key relationship chart |
+| **Theory Quiz** | Test your music theory knowledge |
+| **Interval Trainer** | Ear training for intervals |
+| **Chord Substitutions** | Guide to chord substitutions |
+| **Learn Theory** | Structured theory lessons |
+| **Melody Notepad** | Simple melody composition tool |
+
+## Opening Settings
+
+Tap the **gear icon** in the top-right corner of the app bar to open the Settings panel. Here you can adjust tuning, theme, sound, and more. See the [Settings](08-settings.md) page for details.
+
+## Tips
+
+- The app works entirely offline — no internet connection is needed.
+- Your favorites, songs, and settings are saved locally on your device.
+- Long-press on chord voicings in the library to save them as favorites.

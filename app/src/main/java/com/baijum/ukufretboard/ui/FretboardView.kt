@@ -100,6 +100,7 @@ fun FretboardView(
     leftHanded: Boolean = false,
     scaleNotes: Set<Int> = emptySet(),
     scaleRoot: Int? = null,
+    scalePositionFretRange: IntRange? = null,
     cellWidth: Dp = CELL_WIDTH,
     cellHeight: Dp = CELL_HEIGHT,
     scrollable: Boolean = true,
@@ -162,7 +163,8 @@ fun FretboardView(
                 Row {
                     fretRange.forEach { fret ->
                         val note = getNoteAt(stringIndex, fret)
-                        val inScale = note.pitchClass in scaleNotes
+                        val inScale = note.pitchClass in scaleNotes &&
+                            (scalePositionFretRange == null || fret in scalePositionFretRange)
                         val isScaleRoot = scaleRoot != null && note.pitchClass == scaleRoot
                         FretCell(
                             note = note,

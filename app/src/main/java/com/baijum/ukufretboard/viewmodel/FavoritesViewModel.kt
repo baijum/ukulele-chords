@@ -2,6 +2,7 @@ package com.baijum.ukufretboard.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import com.baijum.ukufretboard.data.FavoriteFolder
 import com.baijum.ukufretboard.data.FavoriteVoicing
 import com.baijum.ukufretboard.data.FavoritesRepository
 import com.baijum.ukufretboard.data.Notes
@@ -23,9 +24,13 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
     private val repository = FavoritesRepository(application)
 
     private val _favorites = MutableStateFlow<List<FavoriteVoicing>>(emptyList())
+    private val _folders = MutableStateFlow<List<FavoriteFolder>>(emptyList())
 
     /** Observable list of favorite voicings. */
     val favorites: StateFlow<List<FavoriteVoicing>> = _favorites.asStateFlow()
+
+    /** Observable list of folders. */
+    val folders: StateFlow<List<FavoriteFolder>> = _folders.asStateFlow()
 
     init {
         refresh()
@@ -89,7 +94,25 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         )
     }
 
+    // ── Folder management ────────────────────────────────────────
+
+    fun createFolder(name: String) {
+        repository.saveFolder(FavoriteFolder(name = name))
+        refresh()
+    }
+
+    fun deleteFolder(folderId: String) {
+        repository.deleteFolder(folderId)
+        refresh()
+    }
+
+    fun moveToFolder(favorite: FavoriteVoicing, folderId: String?) {
+        repository.setFolder(favorite, folderId)
+        refresh()
+    }
+
     private fun refresh() {
         _favorites.value = repository.getAll()
+        _folders.value = repository.getAllFolders()
     }
 }

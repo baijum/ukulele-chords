@@ -318,6 +318,13 @@ fun ProgressionsTab(
                         ChordSheetFormatter.shareText(context, progression.name, text)
                     },
                     onPlay = { playbackProgression = progression },
+                    onDuplicate = {
+                        onSaveProgression(
+                            "${progression.name} (Copy)",
+                            progression.degrees,
+                            progression.scaleType,
+                        )
+                    },
                 )
             }
         }
@@ -354,6 +361,7 @@ private fun ProgressionCard(
     onShare: () -> Unit,
     onPlay: () -> Unit,
     onDelete: (() -> Unit)? = null,
+    onDuplicate: (() -> Unit)? = null,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -464,6 +472,11 @@ private fun ProgressionCard(
                 }
                 TextButton(onClick = onVoiceLeading) {
                     Text("Voice Leading")
+                }
+                if (onDuplicate != null) {
+                    TextButton(onClick = onDuplicate) {
+                        Text("Duplicate")
+                    }
                 }
             }
         }

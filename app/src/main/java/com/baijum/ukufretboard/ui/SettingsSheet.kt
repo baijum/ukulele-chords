@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.DisplaySettings
 import com.baijum.ukufretboard.data.FretboardSettings
+import com.baijum.ukufretboard.data.NotificationSettings
 import com.baijum.ukufretboard.data.SoundSettings
 import com.baijum.ukufretboard.data.ThemeMode
 import com.baijum.ukufretboard.data.TuningSettings
@@ -59,6 +60,8 @@ fun SettingsSheet(
     onTuningSettingsChange: (TuningSettings) -> Unit,
     fretboardSettings: FretboardSettings,
     onFretboardSettingsChange: (FretboardSettings) -> Unit,
+    notificationSettings: NotificationSettings = NotificationSettings(),
+    onNotificationSettingsChange: (NotificationSettings) -> Unit = {},
     syncViewModel: com.baijum.ukufretboard.viewmodel.SyncViewModel? = null,
     onDismiss: () -> Unit,
 ) {
@@ -112,6 +115,14 @@ fun SettingsSheet(
                 onSettingsChange = onFretboardSettingsChange,
             )
 
+            // ── Notifications section ──
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            NotificationSection(
+                settings = notificationSettings,
+                onSettingsChange = onNotificationSettingsChange,
+            )
+
             // ── Google Drive Sync section ──
             if (syncViewModel != null) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -159,6 +170,18 @@ private fun SoundSection(
     )
 
     Spacer(modifier = Modifier.height(12.dp))
+
+    // Volume slider
+    SettingsSlider(
+        label = "Volume",
+        value = settings.volume,
+        valueRange = SoundSettings.MIN_VOLUME..SoundSettings.MAX_VOLUME,
+        valueLabel = "${(settings.volume * 100).toInt()}%",
+        enabled = settings.enabled,
+        onValueChange = { onSettingsChange(settings.copy(volume = it)) },
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
 
     // Note duration slider
     SettingsSlider(
@@ -262,28 +285,36 @@ private fun DisplaySection(
 
     Spacer(modifier = Modifier.height(12.dp))
 
-    // Theme: Light / Dark / System
+    // Theme
+    Text(
+        text = "Theme",
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = "Theme",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Row {
-            ThemeMode.entries.forEach { mode ->
-                FilterChip(
-                    selected = settings.themeMode == mode,
-                    onClick = { onSettingsChange(settings.copy(themeMode = mode)) },
-                    label = { Text(mode.label) },
-                )
-                if (mode != ThemeMode.entries.last()) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-            }
+        ThemeMode.entries.take(2).forEach { mode ->
+            FilterChip(
+                selected = settings.themeMode == mode,
+                onClick = { onSettingsChange(settings.copy(themeMode = mode)) },
+                label = { Text(mode.label) },
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(4.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ThemeMode.entries.drop(2).forEach { mode ->
+            FilterChip(
+                selected = settings.themeMode == mode,
+                onClick = { onSettingsChange(settings.copy(themeMode = mode)) },
+                label = { Text(mode.label) },
+            )
         }
     }
 }
@@ -298,27 +329,37 @@ private fun TuningSection(
 ) {
     SectionHeader("Tuning")
 
+    Text(
+        text = "Tuning",
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Two rows of two chips to accommodate four tuning options
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = "Tuning",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Row {
-            UkuleleTuning.entries.forEach { tuning ->
-                FilterChip(
-                    selected = settings.tuning == tuning,
-                    onClick = { onSettingsChange(settings.copy(tuning = tuning)) },
-                    label = { Text(tuning.label) },
-                )
-                if (tuning != UkuleleTuning.entries.last()) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-            }
+        UkuleleTuning.entries.take(2).forEach { tuning ->
+            FilterChip(
+                selected = settings.tuning == tuning,
+                onClick = { onSettingsChange(settings.copy(tuning = tuning)) },
+                label = { Text(tuning.label) },
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(4.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        UkuleleTuning.entries.drop(2).forEach { tuning ->
+            FilterChip(
+                selected = settings.tuning == tuning,
+                onClick = { onSettingsChange(settings.copy(tuning = tuning)) },
+                label = { Text(tuning.label) },
+            )
         }
     }
 }
@@ -337,6 +378,23 @@ private fun FretboardSection(
         label = "Left-Handed",
         checked = settings.leftHanded,
         onCheckedChange = { onSettingsChange(settings.copy(leftHanded = it)) },
+    )
+}
+
+/**
+ * The Notification settings section.
+ */
+@Composable
+private fun NotificationSection(
+    settings: NotificationSettings,
+    onSettingsChange: (NotificationSettings) -> Unit,
+) {
+    SectionHeader("Notifications")
+
+    SettingsSwitch(
+        label = "Chord of the Day",
+        checked = settings.chordOfDayEnabled,
+        onCheckedChange = { onSettingsChange(settings.copy(chordOfDayEnabled = it)) },
     )
 }
 

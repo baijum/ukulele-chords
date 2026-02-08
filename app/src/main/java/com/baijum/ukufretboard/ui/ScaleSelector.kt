@@ -19,8 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.baijum.ukufretboard.data.Notes
 import com.baijum.ukufretboard.data.Scale
+import com.baijum.ukufretboard.data.ScalePosition
+import com.baijum.ukufretboard.data.ScalePositions
 import com.baijum.ukufretboard.data.Scales
 import com.baijum.ukufretboard.domain.ScaleChords
 import com.baijum.ukufretboard.viewmodel.ScaleOverlayState
@@ -41,9 +47,11 @@ import com.baijum.ukufretboard.viewmodel.ScaleOverlayState
 fun ScaleSelector(
     state: ScaleOverlayState,
     useFlats: Boolean = false,
+    tuningPitchClasses: List<Int> = listOf(7, 0, 4, 9),
     onRootChanged: (Int) -> Unit,
     onScaleChanged: (Scale) -> Unit,
     onToggle: () -> Unit,
+    onPositionChanged: (ScalePosition?) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -103,8 +111,62 @@ fun ScaleSelector(
                     }
                 }
 
-                // Chords in this scale (only shown when a scale is selected)
+                // Position selector (only shown when a scale is selected)
                 val currentScale = state.scale
+                if (currentScale != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    val positions = remember(state.root, currentScale, tuningPitchClasses) {
+                        ScalePositions.generate(state.root, currentScale.intervals, tuningPitchClasses)
+                    }
+                    var selectedPosition by remember(state.root, currentScale) { mutableStateOf<ScalePosition?>(null) }
+
+                    Text(
+                        text = "Position",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        FilterChip(
+                            selected = selectedPosition == null,
+                            onClick = {
+                                selectedPosition = null
+                                onPositionChanged(null)
+                            },
+                            label = { Text("All") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onTertiary,
+                            ),
+                        )
+                        positions.forEach { pos ->
+                            FilterChip(
+                                selected = selectedPosition == pos,
+                                onClick = {
+                                    selectedPosition = pos
+                                    onPositionChanged(pos)
+                                },
+                                label = {
+                                    Text("${pos.name} (${pos.fretRange.first}–${pos.fretRange.last})")
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.tertiary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onTertiary,
+                                ),
+                            )
+                        }
+                    }
+                }
+
+                // Chords in this scale
                 if (currentScale != null) {
                     Spacer(modifier = Modifier.height(6.dp))
 

@@ -56,8 +56,53 @@ class FavoritesRepository(context: Context) {
         return prefs.contains(key)
     }
 
+    /**
+     * Updates the folder assignment for a voicing.
+     */
+    fun setFolder(voicing: FavoriteVoicing, folderId: String?) {
+        val updated = voicing.copy(folderId = folderId)
+        prefs.edit().putString(updated.key, serialize(updated)).apply()
+    }
+
+    // ── Folder management ───────────────────────────────────────────
+
+    private val folderPrefs: SharedPreferences =
+        context.getSharedPreferences(FOLDER_PREFS_NAME, Context.MODE_PRIVATE)
+
+    fun getAllFolders(): List<FavoriteFolder> {
+        return folderPrefs.all.entries
+            .mapNotNull { (_, value) -> deserializeFolder(value as? String) }
+            .sortedBy { it.name }
+    }
+
+    fun saveFolder(folder: FavoriteFolder) {
+        folderPrefs.edit().putString(folder.id, serializeFolder(folder)).apply()
+    }
+
+    fun deleteFolder(folderId: String) {
+        folderPrefs.edit().remove(folderId).apply()
+        // Move all voicings in this folder to unfiled
+        getAll().filter { it.folderId == folderId }.forEach { voicing ->
+            setFolder(voicing, null)
+        }
+    }
+
+    private fun serializeFolder(folder: FavoriteFolder): String =
+        "${folder.id}|||${folder.name}|||${folder.createdAt}"
+
+    private fun deserializeFolder(value: String?): FavoriteFolder? {
+        if (value == null) return null
+        val parts = value.split("|||")
+        if (parts.size < 3) return null
+        return try {
+            FavoriteFolder(id = parts[0], name = parts[1], createdAt = parts[2].toLong())
+        } catch (e: Exception) { null }
+    }
+
+    // ── Serialization ───────────────────────────────────────────────
+
     private fun serialize(voicing: FavoriteVoicing): String =
-        "${voicing.rootPitchClass}|${voicing.chordSymbol}|${voicing.frets.joinToString(",")}|${voicing.addedAt}"
+        "${voicing.rootPitchClass}|${voicing.chordSymbol}|${voicing.frets.joinToString(",")}|${voicing.addedAt}|${voicing.folderId ?: ""}"
 
     private fun deserialize(value: String?): FavoriteVoicing? {
         if (value == null) return null
@@ -69,6 +114,7 @@ class FavoritesRepository(context: Context) {
                 chordSymbol = parts[1],
                 frets = parts[2].split(",").map { it.toInt() },
                 addedAt = parts[3].toLong(),
+                folderId = parts.getOrNull(4)?.ifEmpty { null },
             )
         } catch (e: Exception) {
             null
@@ -91,5 +137,6 @@ class FavoritesRepository(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "chord_favorites"
+        private const val FOLDER_PREFS_NAME = "favorite_folders"
     }
 }

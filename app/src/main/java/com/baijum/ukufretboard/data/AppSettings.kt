@@ -13,12 +13,17 @@ package com.baijum.ukufretboard.data
  */
 data class SoundSettings(
     val enabled: Boolean = true,
+    val volume: Float = DEFAULT_VOLUME,
     val noteDurationMs: Int = DEFAULT_NOTE_DURATION_MS,
     val strumDelayMs: Int = DEFAULT_STRUM_DELAY_MS,
     val strumDown: Boolean = true,
     val playOnTap: Boolean = false,
 ) {
     companion object {
+        const val MIN_VOLUME = 0f
+        const val MAX_VOLUME = 1f
+        const val DEFAULT_VOLUME = 1f
+
         const val MIN_NOTE_DURATION_MS = 300
         const val MAX_NOTE_DURATION_MS = 1200
         const val DEFAULT_NOTE_DURATION_MS = 600
@@ -36,6 +41,7 @@ enum class ThemeMode(val label: String) {
     LIGHT("Light"),
     DARK("Dark"),
     SYSTEM("System"),
+    HIGH_CONTRAST("High Contrast"),
 }
 
 /**
@@ -54,11 +60,20 @@ data class DisplaySettings(
  * Available ukulele tunings.
  *
  * @property label Human-readable name for the tuning.
- * @property gStringOctave The octave of the G string (4 for high-G, 3 for low-G).
+ * @property stringNames Display names for each string (top to bottom).
+ * @property pitchClasses Pitch class (0–11) of each open string.
+ * @property octaves Octave number of each open string.
  */
-enum class UkuleleTuning(val label: String, val gStringOctave: Int) {
-    HIGH_G("High-G (Standard)", 4),
-    LOW_G("Low-G", 3),
+enum class UkuleleTuning(
+    val label: String,
+    val stringNames: List<String>,
+    val pitchClasses: List<Int>,
+    val octaves: List<Int>,
+) {
+    HIGH_G("High-G (Standard)", listOf("G","C","E","A"), listOf(7,0,4,9), listOf(4,4,4,4)),
+    LOW_G("Low-G", listOf("G","C","E","A"), listOf(7,0,4,9), listOf(3,4,4,4)),
+    BARITONE("Baritone (DGBE)", listOf("D","G","B","E"), listOf(2,7,11,4), listOf(3,3,4,4)),
+    D_TUNING("D-Tuning (ADF#B)", listOf("A","D","F#","B"), listOf(9,2,6,11), listOf(4,4,4,4)),
 }
 
 /**
@@ -81,6 +96,15 @@ data class FretboardSettings(
 )
 
 /**
+ * Settings for daily chord notification.
+ *
+ * @property chordOfDayEnabled Whether to show a daily chord notification.
+ */
+data class NotificationSettings(
+    val chordOfDayEnabled: Boolean = false,
+)
+
+/**
  * Top-level container for all app settings, organized by section.
  *
  * Each section is a nested data class with its own defaults.
@@ -91,4 +115,5 @@ data class AppSettings(
     val display: DisplaySettings = DisplaySettings(),
     val tuning: TuningSettings = TuningSettings(),
     val fretboard: FretboardSettings = FretboardSettings(),
+    val notification: NotificationSettings = NotificationSettings(),
 )

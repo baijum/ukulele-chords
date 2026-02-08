@@ -131,6 +131,7 @@ fun FretboardScreen(
     songbookViewModel: SongbookViewModel = viewModel(),
     syncViewModel: SyncViewModel = viewModel(),
     customProgressionViewModel: CustomProgressionViewModel = viewModel(),
+    progressViewModel: com.baijum.ukufretboard.viewmodel.ProgressViewModel = viewModel(),
 ) {
     var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
@@ -296,6 +297,12 @@ fun FretboardScreen(
                         onPlayVoicingsSequentially = { voicings ->
                             fretboardViewModel.playVoicingsSequentially(voicings)
                         },
+                        isLearned = { root, quality ->
+                            progressViewModel.isLearned(root, quality)
+                        },
+                        onToggleLearned = { root, quality ->
+                            progressViewModel.toggleLearned(root, quality)
+                        },
                         useFlats = appSettings.display.useFlats,
                         leftHanded = appSettings.fretboard.leftHanded,
                     )
@@ -391,6 +398,16 @@ fun FretboardScreen(
             onFretboardSettingsChange = { newFretboard ->
                 settingsViewModel.updateFretboard { newFretboard }
             },
+            notificationSettings = appSettings.notification,
+            onNotificationSettingsChange = { newNotification ->
+                settingsViewModel.updateNotification { newNotification }
+                // Schedule or cancel the daily notification worker
+                if (newNotification.chordOfDayEnabled) {
+                    com.baijum.ukufretboard.widget.ChordOfDayNotificationWorker.schedule(context)
+                } else {
+                    com.baijum.ukufretboard.widget.ChordOfDayNotificationWorker.cancel(context)
+                }
+            },
             syncViewModel = syncViewModel,
             onDismiss = { showSettings = false },
         )
@@ -452,9 +469,13 @@ private fun ExplorerTabContent(
         ScaleSelector(
             state = uiState.scaleOverlay,
             useFlats = useFlats,
+            tuningPitchClasses = viewModel.tuning.map { it.openPitchClass },
             onRootChanged = viewModel::setScaleRoot,
             onScaleChanged = viewModel::setScale,
             onToggle = viewModel::toggleScaleOverlay,
+            onPositionChanged = { position ->
+                viewModel.setScalePositionRange(position?.fretRange)
+            },
         )
 
         // Interactive fretboard
@@ -467,6 +488,7 @@ private fun ExplorerTabContent(
             leftHanded = leftHanded,
             scaleNotes = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.scaleNotes else emptySet(),
             scaleRoot = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.root else null,
+            scalePositionFretRange = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.positionFretRange else null,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp, bottom = 16.dp),

@@ -58,6 +58,45 @@ private val DarkColorScheme = darkColorScheme(
     outline = Color(0xFF938F99),
 )
 
+// High contrast color schemes for accessibility
+private val HighContrastLightColorScheme = lightColorScheme(
+    primary = Color(0xFF005DB5),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD1E4FF),
+    onPrimaryContainer = Color.Black,
+    secondary = Color(0xFFCC7700),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFFFE0B2),
+    onSecondaryContainer = Color.Black,
+    surface = Color.White,
+    onSurface = Color.Black,
+    surfaceVariant = Color(0xFFEEEEEE),
+    onSurfaceVariant = Color(0xFF1A1A1A),
+    background = Color.White,
+    onBackground = Color.Black,
+    outline = Color(0xFF333333),
+    error = Color(0xFFC62828),
+)
+
+private val HighContrastDarkColorScheme = darkColorScheme(
+    primary = Color(0xFF82B1FF),
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF003380),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFFFFD54F),
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF664400),
+    onSecondaryContainer = Color.White,
+    surface = Color.Black,
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF1A1A1A),
+    onSurfaceVariant = Color(0xFFE0E0E0),
+    background = Color.Black,
+    onBackground = Color.White,
+    outline = Color(0xFFBBBBBB),
+    error = Color(0xFFFF5252),
+)
+
 private val AppTypography = Typography(
     headlineLarge = TextStyle(
         fontWeight = FontWeight.Bold,
@@ -103,14 +142,15 @@ fun UkuleleCompanionTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit,
 ) {
-    val darkTheme = when (themeMode) {
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    val colorScheme = when (themeMode) {
+        ThemeMode.LIGHT -> LightColorScheme
+        ThemeMode.DARK -> DarkColorScheme
+        ThemeMode.SYSTEM -> if (isSystemInDarkTheme()) DarkColorScheme else LightColorScheme
+        ThemeMode.HIGH_CONTRAST -> if (isSystemInDarkTheme()) HighContrastDarkColorScheme else HighContrastLightColorScheme
     }
 
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+        colorScheme = colorScheme,
         typography = AppTypography,
         content = content,
     )
