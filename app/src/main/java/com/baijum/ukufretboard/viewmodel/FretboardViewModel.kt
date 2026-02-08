@@ -61,6 +61,7 @@ data class FretboardUiState(
     val showNoteNames: Boolean = true,
     val detectionResult: ChordDetector.DetectionResult = ChordDetector.DetectionResult.NoSelection,
     val scaleOverlay: ScaleOverlayState = ScaleOverlayState(),
+    val tuning: List<UkuleleString> = emptyList(),
 ) {
     /**
      * Human-readable finger position string derived from the current selections.
@@ -130,7 +131,7 @@ class FretboardViewModel : ViewModel() {
     var tuning: List<UkuleleString> = STANDARD_TUNING
         private set
 
-    private val _uiState = MutableStateFlow(FretboardUiState())
+    private val _uiState = MutableStateFlow(FretboardUiState(tuning = tuning))
 
     /** Observable UI state for the fretboard screen. */
     val uiState: StateFlow<FretboardUiState> = _uiState.asStateFlow()
@@ -157,9 +158,11 @@ class FretboardViewModel : ViewModel() {
         val newTuning = buildTuning(settings.tuning)
         if (tuning != newTuning) {
             tuning = newTuning
-            // Re-detect with updated tuning (pitch classes unchanged, but re-emitting state)
             _uiState.update { current ->
-                current.copy(detectionResult = detectChord(current.selections))
+                current.copy(
+                    tuning = newTuning,
+                    detectionResult = detectChord(current.selections),
+                )
             }
         }
     }

@@ -450,17 +450,22 @@ private fun ProgressionCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Description + Voice Leading button
+            // Description
+            Text(
+                text = progression.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Action buttons
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text(
-                    text = progression.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
                 TextButton(onClick = onPlay) {
                     Text("Play")
                 }

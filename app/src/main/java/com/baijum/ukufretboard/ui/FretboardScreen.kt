@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -32,6 +33,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -62,6 +64,7 @@ import com.baijum.ukufretboard.viewmodel.FretboardViewModel
 import com.baijum.ukufretboard.viewmodel.SettingsViewModel
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
 import com.baijum.ukufretboard.viewmodel.SyncViewModel
+import com.baijum.ukufretboard.viewmodel.TunerViewModel
 
 /** Navigation section indices. */
 private const val NAV_EXPLORER = 0
@@ -77,6 +80,7 @@ private const val NAV_INTERVAL_TRAINER = 9
 private const val NAV_CHORD_SUBS = 10
 private const val NAV_THEORY_LESSONS = 11
 private const val NAV_MELODY_NOTEPAD = 12
+private const val NAV_TUNER = 13
 
 /**
  * Drawer navigation item metadata.
@@ -87,21 +91,38 @@ private data class DrawerItem(
     val icon: ImageVector,
 )
 
-/** Items displayed in the navigation drawer. Built lazily inside the composable. */
-private fun drawerItems(): List<DrawerItem> = listOf(
-    DrawerItem(NAV_EXPLORER, "Explorer", Icons.Filled.Home),
-    DrawerItem(NAV_LIBRARY, "Chords", Icons.Filled.Search),
-    DrawerItem(NAV_PATTERNS, "Patterns", Icons.AutoMirrored.Filled.List),
-    DrawerItem(NAV_PROGRESSIONS, "Progressions", Icons.Filled.PlayArrow),
-    DrawerItem(NAV_FAVORITES, "Favorites", Icons.Filled.Favorite),
-    DrawerItem(NAV_SONGBOOK, "Songs", Icons.Filled.Create),
-    DrawerItem(NAV_CAPO_GUIDE, "Capo Guide", Icons.Filled.Info),
-    DrawerItem(NAV_CIRCLE_OF_FIFTHS, "Circle of Fifths", Icons.Filled.Refresh),
-    DrawerItem(NAV_THEORY_QUIZ, "Theory Quiz", Icons.Filled.Create),
-    DrawerItem(NAV_INTERVAL_TRAINER, "Interval Trainer", Icons.Filled.PlayArrow),
-    DrawerItem(NAV_CHORD_SUBS, "Chord Substitutions", Icons.AutoMirrored.Filled.List),
-    DrawerItem(NAV_THEORY_LESSONS, "Learn Theory", Icons.Filled.Info),
-    DrawerItem(NAV_MELODY_NOTEPAD, "Melody Notepad", Icons.Filled.Create),
+/**
+ * A labeled group of drawer items rendered under a section header.
+ */
+private data class DrawerSection(
+    val title: String,
+    val items: List<DrawerItem>,
+)
+
+/** Drawer items organised into four groups: Play, Create, Learn, Reference. */
+private fun drawerSections(): List<DrawerSection> = listOf(
+    DrawerSection("Play", listOf(
+        DrawerItem(NAV_EXPLORER, "Explorer", Icons.Filled.Home),
+        DrawerItem(NAV_TUNER, "Tuner", Icons.Filled.Mic),
+        DrawerItem(NAV_LIBRARY, "Chords", Icons.Filled.Search),
+        DrawerItem(NAV_FAVORITES, "Favorites", Icons.Filled.Favorite),
+    )),
+    DrawerSection("Create", listOf(
+        DrawerItem(NAV_SONGBOOK, "Songs", Icons.Filled.Create),
+        DrawerItem(NAV_MELODY_NOTEPAD, "Melody Notepad", Icons.Filled.Create),
+        DrawerItem(NAV_PATTERNS, "Patterns", Icons.AutoMirrored.Filled.List),
+        DrawerItem(NAV_PROGRESSIONS, "Progressions", Icons.Filled.PlayArrow),
+    )),
+    DrawerSection("Learn", listOf(
+        DrawerItem(NAV_THEORY_LESSONS, "Learn Theory", Icons.Filled.Info),
+        DrawerItem(NAV_THEORY_QUIZ, "Theory Quiz", Icons.Filled.Create),
+        DrawerItem(NAV_INTERVAL_TRAINER, "Interval Trainer", Icons.Filled.PlayArrow),
+    )),
+    DrawerSection("Reference", listOf(
+        DrawerItem(NAV_CAPO_GUIDE, "Capo Guide", Icons.Filled.Info),
+        DrawerItem(NAV_CIRCLE_OF_FIFTHS, "Circle of Fifths", Icons.Filled.Refresh),
+        DrawerItem(NAV_CHORD_SUBS, "Chord Substitutions", Icons.AutoMirrored.Filled.List),
+    )),
 )
 
 /**
@@ -132,6 +153,7 @@ fun FretboardScreen(
     syncViewModel: SyncViewModel = viewModel(),
     customProgressionViewModel: CustomProgressionViewModel = viewModel(),
     progressViewModel: com.baijum.ukufretboard.viewmodel.ProgressViewModel = viewModel(),
+    tunerViewModel: TunerViewModel = viewModel(),
 ) {
     var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
@@ -150,7 +172,8 @@ fun FretboardScreen(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val items = remember { drawerItems() }
+    val sections = remember { drawerSections() }
+    val allItems = remember(sections) { sections.flatMap { it.items } }
 
     val appSettings by settingsViewModel.settings.collectAsState()
 
@@ -192,22 +215,37 @@ fun FretboardScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    text = "Ukulele Companion",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
-                )
-                items.forEach { item ->
-                    NavigationDrawerItem(
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                        selected = selectedSection == item.index,
-                        onClick = {
-                            selectedSection = item.index
-                            scope.launch { drawerState.close() }
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text = "Ukulele Companion",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
                     )
+                    sections.forEachIndexed { sectionIndex, section ->
+                        if (sectionIndex > 0) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
+                        )
+                        section.items.forEach { item ->
+                            NavigationDrawerItem(
+                                icon = { Icon(item.icon, contentDescription = item.label) },
+                                label = { Text(item.label) },
+                                selected = selectedSection == item.index,
+                                onClick = {
+                                    selectedSection = item.index
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -217,7 +255,7 @@ fun FretboardScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            text = items.firstOrNull { it.index == selectedSection }?.label
+                            text = allItems.firstOrNull { it.index == selectedSection }?.label
                                 ?: "Explorer",
                             style = MaterialTheme.typography.titleLarge,
                         )
@@ -259,6 +297,13 @@ fun FretboardScreen(
                         leftHanded = appSettings.fretboard.leftHanded,
                         useFlats = appSettings.display.useFlats,
                         onFullScreen = { showFullScreen = true },
+                    )
+                    NAV_TUNER -> TunerTab(
+                        viewModel = tunerViewModel,
+                        tuning = appSettings.tuning.tuning,
+                        leftHanded = appSettings.fretboard.leftHanded,
+                        useFlats = appSettings.display.useFlats,
+                        soundEnabled = appSettings.sound.enabled,
                     )
                     NAV_LIBRARY -> ChordLibraryTab(
                         viewModel = libraryViewModel,
@@ -459,6 +504,7 @@ private fun ExplorerTabContent(
     onFullScreen: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val currentTuning = uiState.tuning.ifEmpty { viewModel.tuning }
 
     Column(
         modifier = Modifier
@@ -469,18 +515,31 @@ private fun ExplorerTabContent(
         ScaleSelector(
             state = uiState.scaleOverlay,
             useFlats = useFlats,
-            tuningPitchClasses = viewModel.tuning.map { it.openPitchClass },
+            tuningPitchClasses = currentTuning.map { it.openPitchClass },
             onRootChanged = viewModel::setScaleRoot,
             onScaleChanged = viewModel::setScale,
             onToggle = viewModel::toggleScaleOverlay,
             onPositionChanged = { position ->
                 viewModel.setScalePositionRange(position?.fretRange)
             },
+            onChordTapped = { chord ->
+                val formula = com.baijum.ukufretboard.data.ChordFormulas.ALL
+                    .firstOrNull { it.symbol == chord.quality }
+                if (formula != null) {
+                    val voicings = com.baijum.ukufretboard.data.VoicingGenerator.generate(
+                        rootPitchClass = chord.rootPitchClass,
+                        formula = formula,
+                        tuning = currentTuning,
+                        useFlats = useFlats,
+                    )
+                    voicings.firstOrNull()?.let { viewModel.applyVoicing(it) }
+                }
+            },
         )
 
         // Interactive fretboard
         FretboardView(
-            tuning = viewModel.tuning,
+            tuning = currentTuning,
             selections = uiState.selections,
             showNoteNames = uiState.showNoteNames,
             onFretTap = viewModel::toggleFret,
@@ -535,7 +594,7 @@ private fun ExplorerTabContent(
             soundEnabled = soundEnabled,
             frets = fretsList,
             useFlats = useFlats,
-            tuning = viewModel.tuning,
+            tuning = currentTuning,
             modifier = Modifier.fillMaxWidth(),
         )
     }

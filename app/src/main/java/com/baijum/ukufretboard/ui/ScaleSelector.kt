@@ -52,6 +52,7 @@ fun ScaleSelector(
     onScaleChanged: (Scale) -> Unit,
     onToggle: () -> Unit,
     onPositionChanged: (ScalePosition?) -> Unit = {},
+    onChordTapped: (ScaleChords.DiatonicChord) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -189,7 +190,7 @@ fun ScaleSelector(
                             val chordName = ScaleChords.formatChord(chord, useFlats)
                             FilterChip(
                                 selected = false,
-                                onClick = { },
+                                onClick = { onChordTapped(chord) },
                                 label = {
                                     Text(
                                         text = chordName,
