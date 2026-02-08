@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Microphone is only used by the optional Tuner feature; the app
+         works fully without it, so we mark it as not required. -->
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
