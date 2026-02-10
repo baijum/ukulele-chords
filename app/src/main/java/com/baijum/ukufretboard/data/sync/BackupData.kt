@@ -18,7 +18,6 @@ import kotlinx.serialization.Serializable
  * @property customStrumPatterns All user-created strumming patterns.
  * @property customFingerpickingPatterns All user-created fingerpicking patterns.
  * @property learningProgress Learning activity statistics and streaks.
- * @property chordProgress Learned chords and practice streak.
  * @property settings Application settings snapshot.
  */
 @Serializable
@@ -32,7 +31,6 @@ data class BackupData(
     val customStrumPatterns: List<BackupStrumPattern> = emptyList(),
     val customFingerpickingPatterns: List<BackupFingerpickingPattern> = emptyList(),
     val learningProgress: BackupLearningProgress = BackupLearningProgress(),
-    val chordProgress: BackupChordProgress = BackupChordProgress(),
     val settings: BackupSettings = BackupSettings(),
 ) {
     companion object {
@@ -54,6 +52,7 @@ data class BackupFavorite(
     val frets: List<Int>,
     val addedAt: Long,
     val folderId: String? = null,
+    val folderIds: List<String> = emptyList(),
 )
 
 /**
@@ -64,6 +63,7 @@ data class BackupFavoriteFolder(
     val id: String,
     val name: String,
     val createdAt: Long,
+    val voicingOrder: List<String> = emptyList(),
 )
 
 // =============================================================================
@@ -176,20 +176,6 @@ data class BackupLearningProgress(
 )
 
 // =============================================================================
-// Chord Progress (learned chords + practice streak)
-// =============================================================================
-
-/**
- * Serializable snapshot of chord learning progress.
- */
-@Serializable
-data class BackupChordProgress(
-    val learnedChords: Set<String> = emptySet(),
-    val dailyStreak: Int = 0,
-    val lastPracticeDate: String? = null,
-)
-
-// =============================================================================
 // Settings
 // =============================================================================
 
@@ -208,5 +194,6 @@ data class BackupSettings(
     val tuning: String = "HIGH_G",
     val leftHanded: Boolean = false,
     val lastFret: Int = 12,
+    val showNoteNames: Boolean = true,
     val chordOfDayEnabled: Boolean = false,
 )

@@ -222,14 +222,6 @@ fun FullScreenFretboard(
                         Text("Reset")
                     }
 
-                    // Show/Hide Notes
-                    TextButton(onClick = {
-                        viewModel.toggleNoteNames()
-                        showOverlay = true
-                    }) {
-                        Text(if (uiState.showNoteNames) "Hide" else "Notes")
-                    }
-
                     Spacer(modifier = Modifier.width(4.dp))
 
                     // Exit full screen

@@ -290,10 +290,10 @@ class FretboardViewModel : ViewModel() {
     }
 
     /**
-     * Toggles the display of note names on the fretboard cells.
+     * Sets whether note names are displayed on the fretboard cells.
      */
-    fun toggleNoteNames() {
-        _uiState.update { it.copy(showNoteNames = !it.showNoteNames) }
+    fun setShowNoteNames(show: Boolean) {
+        _uiState.update { it.copy(showNoteNames = show) }
     }
 
     // ── Scale overlay controls ──

@@ -351,6 +351,12 @@ private fun FretboardSection(
         onCheckedChange = { onSettingsChange(settings.copy(leftHanded = it)) },
     )
 
+    SettingsSwitch(
+        label = "Show Note Names",
+        checked = settings.showNoteNames,
+        onCheckedChange = { onSettingsChange(settings.copy(showNoteNames = it)) },
+    )
+
     Spacer(modifier = Modifier.height(8.dp))
 
     SettingsSlider(

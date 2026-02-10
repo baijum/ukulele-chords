@@ -174,7 +174,6 @@ fun FretboardScreen(
     songbookViewModel: SongbookViewModel = viewModel(),
     backupRestoreViewModel: BackupRestoreViewModel = viewModel(),
     customProgressionViewModel: CustomProgressionViewModel = viewModel(),
-    progressViewModel: com.baijum.ukufretboard.viewmodel.ProgressViewModel = viewModel(),
     tunerViewModel: TunerViewModel = viewModel(),
     pitchMonitorViewModel: PitchMonitorViewModel = viewModel(),
     learningProgressViewModel: LearningProgressViewModel = viewModel(),
@@ -183,6 +182,9 @@ fun FretboardScreen(
     var showSettings by remember { mutableStateOf(false) }
     var showFullScreen by rememberSaveable { mutableStateOf(false) }
     var shareChordInfo by remember { mutableStateOf<ShareChordInfo?>(null) }
+    // State for the "Save to Folders" bottom sheet (shared between Library and Favorites)
+    var sheetVoicing by remember { mutableStateOf<SheetVoicingInfo?>(null) }
+    val currentFolders by favoritesViewModel.folders.collectAsState()
 
     // Initialize BackupRestoreViewModel with SettingsViewModel reference
     LaunchedEffect(Unit) {
@@ -221,6 +223,11 @@ fun FretboardScreen(
     // Sync fret count setting
     LaunchedEffect(appSettings.fretboard.lastFret) {
         fretboardViewModel.setLastFret(appSettings.fretboard.lastFret)
+    }
+
+    // Sync show-note-names setting
+    LaunchedEffect(appSettings.fretboard.showNoteNames) {
+        fretboardViewModel.setShowNoteNames(appSettings.fretboard.showNoteNames)
     }
 
     // Full-screen landscape fretboard mode
@@ -388,10 +395,10 @@ fun FretboardScreen(
                         val key = "${state.selectedRoot}|$symbol|${voicing.frets.joinToString(",")}"
                         currentFavorites.any { it.key == key }
                     },
-                        onToggleFavorite = { voicing ->
+                        onFavoriteClick = { voicing ->
                             val state = libraryViewModel.uiState.value
                             val symbol = state.selectedFormula?.symbol ?: ""
-                            favoritesViewModel.toggleFavorite(
+                            sheetVoicing = SheetVoicingInfo(
                                 rootPitchClass = state.selectedRoot,
                                 chordSymbol = symbol,
                                 frets = voicing.frets,
@@ -402,12 +409,6 @@ fun FretboardScreen(
                         },
                         onPlayVoicingsSequentially = { voicings ->
                             fretboardViewModel.playVoicingsSequentially(voicings)
-                        },
-                        isLearned = { root, quality ->
-                            progressViewModel.isLearned(root, quality)
-                        },
-                        onToggleLearned = { root, quality ->
-                            progressViewModel.toggleLearned(root, quality)
                         },
                         leftHanded = appSettings.fretboard.leftHanded,
                     )
@@ -551,7 +552,52 @@ fun FretboardScreen(
             onDismiss = { shareChordInfo = null },
         )
     }
+
+    // "Save to Folders" bottom sheet (shared between Chord Library and Favorites tabs)
+    sheetVoicing?.let { info ->
+        val isAlreadyFavorited = favoritesViewModel.isFavorite(
+            info.rootPitchClass, info.chordSymbol, info.frets,
+        )
+        val currentFolderIds = favoritesViewModel.getFolderIdsForVoicing(
+            info.rootPitchClass, info.chordSymbol, info.frets,
+        )
+        FavoriteFolderSheet(
+            folders = currentFolders,
+            selectedFolderIds = currentFolderIds,
+            isAlreadyFavorited = isAlreadyFavorited,
+            onSave = { selectedIds ->
+                favoritesViewModel.saveFavoriteToFolders(
+                    rootPitchClass = info.rootPitchClass,
+                    chordSymbol = info.chordSymbol,
+                    frets = info.frets,
+                    folderIds = selectedIds,
+                )
+                sheetVoicing = null
+            },
+            onRemove = {
+                favoritesViewModel.removeFavorite(
+                    rootPitchClass = info.rootPitchClass,
+                    chordSymbol = info.chordSymbol,
+                    frets = info.frets,
+                )
+                sheetVoicing = null
+            },
+            onCreateFolder = { name ->
+                favoritesViewModel.createFolder(name)
+            },
+            onDismiss = { sheetVoicing = null },
+        )
+    }
 }
+
+/**
+ * Holds the identifying information for a voicing whose folder sheet is open.
+ */
+private data class SheetVoicingInfo(
+    val rootPitchClass: Int,
+    val chordSymbol: String,
+    val frets: List<Int>,
+)
 
 /**
  * Navigates to the Chord Library tab with the given chord name parsed into root + quality.
@@ -670,9 +716,6 @@ private fun ExplorerTabContent(
         ) {
             OutlinedButton(onClick = viewModel::clearAll) {
                 Text("Reset")
-            }
-            OutlinedButton(onClick = viewModel::toggleNoteNames) {
-                Text(if (uiState.showNoteNames) "Hide Notes" else "Show Notes")
             }
             OutlinedButton(onClick = viewModel::toggleScaleOverlay) {
                 Text(if (uiState.scaleOverlay.enabled) "Hide Scale" else "Scales")

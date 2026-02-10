@@ -11,3 +11,4 @@
 .cxx
 /keystore.properties
 *.jks
+.kotlin/

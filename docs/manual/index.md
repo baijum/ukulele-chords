@@ -6,7 +6,7 @@ Welcome to **Ukulele Companion**, a free, offline, ad-free Android app for learn
 
 1. [Getting Started](01-getting-started.md) — Installation, first launch, and navigating the app
 2. [Explorer](02-explorer.md) — Interactive fretboard, chord detection, and scale overlay
-3. [Chords](03-chords.md) — Browsing the chord library and tracking what you've learned
+3. [Chords](03-chords.md) — Browsing the chord library and saving favorites
 4. [Patterns](04-patterns.md) — Strumming and fingerpicking pattern reference
 5. [Progressions](05-progressions.md) — Common chord progressions in any key
 6. [Favorites](06-favorites.md) — Saving and organizing your favorite voicings

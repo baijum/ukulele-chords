@@ -6,7 +6,6 @@ import com.baijum.ukufretboard.data.FavoriteFolder
 import com.baijum.ukufretboard.data.FavoriteVoicing
 import com.baijum.ukufretboard.data.FavoritesRepository
 import com.baijum.ukufretboard.data.Notes
-import com.baijum.ukufretboard.data.VoicingGenerator
 import com.baijum.ukufretboard.domain.ChordVoicing
 import com.baijum.ukufretboard.domain.Note
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +36,7 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * Adds a voicing to favorites.
+     * Adds a voicing to favorites (unfiled).
      */
     fun addFavorite(rootPitchClass: Int, chordSymbol: String, frets: List<Int>) {
         val voicing = FavoriteVoicing(
@@ -58,16 +57,15 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
-     * Toggles a voicing in/out of favorites.
+     * Removes a voicing identified by root, symbol, and frets from favorites.
      */
-    fun toggleFavorite(rootPitchClass: Int, chordSymbol: String, frets: List<Int>) {
-        val voicing = FavoriteVoicing(rootPitchClass = rootPitchClass, chordSymbol = chordSymbol, frets = frets)
-        if (repository.contains(voicing)) {
-            repository.remove(voicing)
-        } else {
-            repository.add(voicing)
+    fun removeFavorite(rootPitchClass: Int, chordSymbol: String, frets: List<Int>) {
+        val key = "$rootPitchClass|$chordSymbol|${frets.joinToString(",")}"
+        val existing = _favorites.value.firstOrNull { it.key == key }
+        if (existing != null) {
+            repository.remove(existing)
+            refresh()
         }
-        refresh()
     }
 
     /**
@@ -75,6 +73,44 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
      */
     fun isFavorite(rootPitchClass: Int, chordSymbol: String, frets: List<Int>): Boolean =
         repository.contains(rootPitchClass, chordSymbol, frets)
+
+    /**
+     * Returns the folder IDs for a voicing identified by root, symbol, and frets.
+     */
+    fun getFolderIdsForVoicing(rootPitchClass: Int, chordSymbol: String, frets: List<Int>): List<String> {
+        val key = "$rootPitchClass|$chordSymbol|${frets.joinToString(",")}"
+        return _favorites.value.firstOrNull { it.key == key }?.folderIds ?: emptyList()
+    }
+
+    /**
+     * Saves a voicing to favorites with the given folder assignments.
+     * Adds the voicing if not already present, then sets its folders.
+     */
+    fun saveFavoriteToFolders(
+        rootPitchClass: Int,
+        chordSymbol: String,
+        frets: List<Int>,
+        folderIds: List<String>,
+    ) {
+        val key = "$rootPitchClass|$chordSymbol|${frets.joinToString(",")}"
+        val existing = _favorites.value.firstOrNull { it.key == key }
+        if (existing == null) {
+            // Add as new favorite, then set folders
+            val voicing = FavoriteVoicing(
+                rootPitchClass = rootPitchClass,
+                chordSymbol = chordSymbol,
+                frets = frets,
+                folderIds = folderIds,
+            )
+            repository.add(voicing)
+            // After add, set folders to update ordering
+            val added = repository.getAll().firstOrNull { it.key == key }
+            if (added != null) repository.setFolders(added, folderIds)
+        } else {
+            repository.setFolders(existing, folderIds)
+        }
+        refresh()
+    }
 
     /**
      * Converts a [FavoriteVoicing] to a [ChordVoicing] for display and application.
@@ -101,14 +137,43 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
         refresh()
     }
 
+    fun renameFolder(folderId: String, newName: String) {
+        repository.renameFolder(folderId, newName)
+        refresh()
+    }
+
     fun deleteFolder(folderId: String) {
         repository.deleteFolder(folderId)
         refresh()
     }
 
-    fun moveToFolder(favorite: FavoriteVoicing, folderId: String?) {
-        repository.setFolder(favorite, folderId)
+    /**
+     * Updates the folder assignments for a voicing.
+     */
+    fun setFolders(favorite: FavoriteVoicing, folderIds: List<String>) {
+        repository.setFolders(favorite, folderIds)
         refresh()
+    }
+
+    /**
+     * Saves the reordered voicing keys for a specific folder.
+     */
+    fun reorderInFolder(folderId: String, orderedKeys: List<String>) {
+        repository.reorderVoicingsInFolder(folderId, orderedKeys)
+        refresh()
+    }
+
+    /**
+     * Returns voicings in the given folder, sorted by the folder's voicing order.
+     * Voicings not in the order list are appended at the end (newest first).
+     */
+    fun getOrderedVoicings(folderId: String): List<FavoriteVoicing> {
+        val folder = _folders.value.firstOrNull { it.id == folderId } ?: return emptyList()
+        val inFolder = _favorites.value.filter { folderId in it.folderIds }
+        val orderMap = folder.voicingOrder.withIndex().associate { (idx, key) -> key to idx }
+        return inFolder.sortedWith(compareBy<FavoriteVoicing> {
+            orderMap[it.key] ?: Int.MAX_VALUE
+        }.thenByDescending { it.addedAt })
     }
 
     private fun refresh() {

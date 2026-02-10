@@ -105,10 +105,12 @@ data class TuningSettings(
  * @property leftHanded When true, the fretboard is mirrored horizontally
  *   so the nut appears on the right (matching a left-handed player's view).
  * @property lastFret The highest fret shown on the fretboard (12–22, default 12).
+ * @property showNoteNames When true, note names are displayed on fretboard cells.
  */
 data class FretboardSettings(
     val leftHanded: Boolean = false,
     val lastFret: Int = DEFAULT_LAST_FRET,
+    val showNoteNames: Boolean = true,
 ) {
     companion object {
         const val MIN_LAST_FRET = 12

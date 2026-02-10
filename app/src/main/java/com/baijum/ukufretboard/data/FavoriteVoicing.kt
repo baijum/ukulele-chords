@@ -7,13 +7,14 @@ package com.baijum.ukufretboard.data
  * @property chordSymbol The chord quality symbol (e.g., "m7", "sus2", "").
  * @property frets The fret positions for each string (e.g., [0, 0, 0, 3]).
  * @property addedAt Timestamp when the voicing was saved.
+ * @property folderIds IDs of the folders this voicing belongs to. Empty = unfiled.
  */
 data class FavoriteVoicing(
     val rootPitchClass: Int,
     val chordSymbol: String,
     val frets: List<Int>,
     val addedAt: Long = System.currentTimeMillis(),
-    val folderId: String? = null,
+    val folderIds: List<String> = emptyList(),
 ) {
     /**
      * A unique key for deduplication: root + symbol + frets.
@@ -27,9 +28,11 @@ data class FavoriteVoicing(
  * @property id Unique identifier.
  * @property name Display name of the folder.
  * @property createdAt Timestamp when the folder was created.
+ * @property voicingOrder Ordered list of voicing keys defining display order within the folder.
  */
 data class FavoriteFolder(
     val id: String = java.util.UUID.randomUUID().toString(),
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
+    val voicingOrder: List<String> = emptyList(),
 )

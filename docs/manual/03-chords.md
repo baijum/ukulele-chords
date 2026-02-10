@@ -28,15 +28,6 @@ Each diagram shows:
 
 See [Favorites](06-favorites.md) for more about managing your saved voicings.
 
-## Marking Chords as Learned
-
-Each chord type has a **checkmark icon** in the top-left corner of the voicing grid. Use this to track your learning progress:
-
-- Tap the **empty checkmark** to mark a chord as learned. It turns into a filled checkmark with your theme's primary color.
-- Tap it again to unmark it.
-
-This is a personal tracking feature — it does not affect the app's behavior, but it helps you keep track of which chords you have practiced and feel comfortable with.
-
 ## Playing Voicings
 
 Tap the **play button** on any voicing to hear it played back. The app strums the notes with the sound settings you have configured (volume, strum delay, note duration).

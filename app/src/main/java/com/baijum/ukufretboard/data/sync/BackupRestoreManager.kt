@@ -9,7 +9,6 @@ import com.baijum.ukufretboard.data.FavoriteFolder
 import com.baijum.ukufretboard.data.FavoriteVoicing
 import com.baijum.ukufretboard.data.FavoritesRepository
 import com.baijum.ukufretboard.data.LearningProgressRepository
-import com.baijum.ukufretboard.data.ProgressRepository
 import com.baijum.ukufretboard.data.AppSettings
 import com.baijum.ukufretboard.data.SoundSettings
 import com.baijum.ukufretboard.data.DisplaySettings
@@ -44,7 +43,6 @@ class BackupRestoreManager(
     private val strumPatternRepo by lazy { CustomStrumPatternRepository(context) }
     private val fingerpickingRepo by lazy { CustomFingerpickingPatternRepository(context) }
     private val learningProgressRepo by lazy { LearningProgressRepository(context) }
-    private val progressRepo by lazy { ProgressRepository(context) }
 
     /**
      * Collects all user data from all repositories and serializes to JSON.
@@ -61,7 +59,7 @@ class BackupRestoreManager(
                     chordSymbol = fav.chordSymbol,
                     frets = fav.frets,
                     addedAt = fav.addedAt,
-                    folderId = fav.folderId,
+                    folderIds = fav.folderIds,
                 )
             },
             favoriteFolders = favoritesRepo.getAllFolders().map { folder ->
@@ -69,6 +67,7 @@ class BackupRestoreManager(
                     id = folder.id,
                     name = folder.name,
                     createdAt = folder.createdAt,
+                    voicingOrder = folder.voicingOrder,
                 )
             },
             chordSheets = chordSheetRepo.getAll().map { sheet ->
@@ -127,14 +126,6 @@ class BackupRestoreManager(
             learningProgress = BackupLearningProgress(
                 entries = learningProgressRepo.exportAll(),
             ),
-            chordProgress = run {
-                val (learned, streak, lastDate) = progressRepo.exportData()
-                BackupChordProgress(
-                    learnedChords = learned,
-                    dailyStreak = streak,
-                    lastPracticeDate = lastDate,
-                )
-            },
             settings = settingsViewModel.exportSettings().let { s ->
                 BackupSettings(
                     soundEnabled = s.sound.enabled,
@@ -147,6 +138,7 @@ class BackupRestoreManager(
                     tuning = s.tuning.tuning.name,
                     leftHanded = s.fretboard.leftHanded,
                     lastFret = s.fretboard.lastFret,
+                    showNoteNames = s.fretboard.showNoteNames,
                     chordOfDayEnabled = s.notification.chordOfDayEnabled,
                 )
             },
@@ -171,18 +163,27 @@ class BackupRestoreManager(
 
         // --- Favorites ---
         favoritesRepo.importAll(backup.favorites.map { f ->
+            // Backward compat: if folderIds is empty but old folderId is present, migrate
+            val ids = f.folderIds.ifEmpty {
+                listOfNotNull(f.folderId)
+            }
             FavoriteVoicing(
                 rootPitchClass = f.rootPitchClass,
                 chordSymbol = f.chordSymbol,
                 frets = f.frets,
                 addedAt = f.addedAt,
-                folderId = f.folderId,
+                folderIds = ids,
             )
         })
 
         // --- Favorite folders ---
         favoritesRepo.importFolders(backup.favoriteFolders.map { f ->
-            FavoriteFolder(id = f.id, name = f.name, createdAt = f.createdAt)
+            FavoriteFolder(
+                id = f.id,
+                name = f.name,
+                createdAt = f.createdAt,
+                voicingOrder = f.voicingOrder,
+            )
         })
 
         // --- Chord sheets ---
@@ -208,13 +209,6 @@ class BackupRestoreManager(
 
         // --- Learning progress ---
         learningProgressRepo.importAll(backup.learningProgress.entries)
-
-        // --- Chord progress ---
-        progressRepo.importData(
-            learnedChords = backup.chordProgress.learnedChords,
-            dailyStreak = backup.chordProgress.dailyStreak,
-            lastPracticeDate = backup.chordProgress.lastPracticeDate,
-        )
 
         // --- Settings (replace) ---
         val bs = backup.settings
@@ -245,6 +239,7 @@ class BackupRestoreManager(
                 fretboard = FretboardSettings(
                     leftHanded = bs.leftHanded,
                     lastFret = bs.lastFret,
+                    showNoteNames = bs.showNoteNames,
                 ),
                 notification = NotificationSettings(chordOfDayEnabled = bs.chordOfDayEnabled),
             )
