@@ -247,6 +247,33 @@ object TheoryLessons {
             quizCorrectIndex = 2,
             quizExplanation = "The dominant 7th chord contains a tritone between its 3rd and 7th, creating strong tension that 'wants' to resolve to the tonic.",
         ),
+        TheoryLesson(
+            id = "chords_inversions",
+            module = "Chords",
+            title = "Chord Inversions",
+            content = "A chord inversion is the same chord played with a different note in the bass " +
+                "(the lowest-sounding note). The notes don\u2019t change \u2014 only which one is on the bottom.\n\n" +
+                "\u2022 Root position: root in the bass (C-E-G).\n" +
+                "\u2022 1st inversion: 3rd in the bass (E-G-C). Written as C/E.\n" +
+                "\u2022 2nd inversion: 5th in the bass (G-C-E). Written as C/G.\n" +
+                "\u2022 3rd inversion (7th chords only): 7th in the bass (Bb-C-E-G). Written as C7/Bb.\n\n" +
+                "On ukulele with standard re-entrant tuning (G4-C4-E4-A4), the bass note is usually on the " +
+                "C string \u2014 the lowest-pitched string \u2014 not the top G string. This means many common " +
+                "voicings are already inversions without players realizing it.\n\n" +
+                "Inversions matter because they enable smoother voice leading: by choosing an inversion " +
+                "where the bass note is close to the next chord\u2019s bass note, transitions sound more connected " +
+                "and musical.",
+            keyPoints = listOf(
+                "Inversions reorder which chord tone is the lowest note",
+                "Slash notation (C/E) shows the chord and its bass note",
+                "Ukulele re-entrant tuning makes the C string the true bass",
+                "Using inversions creates smoother chord transitions (voice leading)",
+            ),
+            quizQuestion = "In a first-inversion C major triad, which note is in the bass?",
+            quizOptions = listOf("C", "E", "G", "B"),
+            quizCorrectIndex = 1,
+            quizExplanation = "First inversion places the 3rd of the chord in the bass. For C major (C-E-G), the 3rd is E, giving E-G-C (written C/E).",
+        ),
         // ── Module 5: Keys & Signatures ──
         TheoryLesson(
             id = "keys_intro",
