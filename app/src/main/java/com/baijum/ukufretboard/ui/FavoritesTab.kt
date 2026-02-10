@@ -56,6 +56,7 @@ private const val FILTER_UNFILED = "__unfiled__"
 fun FavoritesTab(
     viewModel: FavoritesViewModel,
     onVoicingSelected: (ChordVoicing) -> Unit,
+    onShareVoicing: ((ChordVoicing, String) -> Unit)? = null,
     leftHanded: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -169,6 +170,9 @@ fun FavoritesTab(
                             ChordDiagramPreview(
                                 voicing = voicing,
                                 onClick = { onVoicingSelected(voicing) },
+                                onLongClick = onShareVoicing?.let { share ->
+                                    { share(voicing, chordName) }
+                                },
                                 leftHanded = leftHanded,
                             )
                         }

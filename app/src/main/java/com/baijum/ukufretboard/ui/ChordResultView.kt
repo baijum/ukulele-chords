@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +56,7 @@ fun ChordResultView(
     soundEnabled: Boolean = true,
     frets: List<Int>? = null,
     tuning: List<UkuleleString> = FretboardViewModel.STANDARD_TUNING,
+    onShareChord: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val hasNotes = detectionResult !is ChordDetector.DetectionResult.NoSelection
@@ -126,6 +128,7 @@ fun ChordResultView(
                     text = displayName,
                     onPlay = onPlayChord,
                     showPlay = soundEnabled,
+                    onShare = onShareChord,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -277,6 +280,7 @@ private fun ChordHeadlineWithPlay(
     onPlay: () -> Unit,
     showPlay: Boolean = true,
     isSmall: Boolean = false,
+    onShare: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -300,6 +304,21 @@ private fun ChordHeadlineWithPlay(
                     imageVector = Icons.Filled.PlayArrow,
                     contentDescription = "Play sound",
                     modifier = Modifier.size(32.dp),
+                )
+            }
+        }
+        if (onShare != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = onShare,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Share,
+                    contentDescription = "Share chord as image",
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }

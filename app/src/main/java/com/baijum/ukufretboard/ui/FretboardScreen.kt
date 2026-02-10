@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -57,6 +58,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.baijum.ukufretboard.audio.ToneGenerator
+import com.baijum.ukufretboard.data.Notes
+import com.baijum.ukufretboard.domain.ChordInfo
+import com.baijum.ukufretboard.domain.ChordVoicing
 import com.baijum.ukufretboard.viewmodel.ChordLibraryViewModel
 import com.baijum.ukufretboard.viewmodel.CustomProgressionViewModel
 import com.baijum.ukufretboard.viewmodel.FavoritesViewModel
@@ -65,6 +69,7 @@ import com.baijum.ukufretboard.viewmodel.SettingsViewModel
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
 import com.baijum.ukufretboard.viewmodel.SyncViewModel
 import com.baijum.ukufretboard.viewmodel.TunerViewModel
+import com.baijum.ukufretboard.viewmodel.PitchMonitorViewModel
 import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
 
 /** Navigation section indices. */
@@ -88,6 +93,8 @@ private const val NAV_GLOSSARY = 16
 private const val NAV_NOTE_MAP = 17
 private const val NAV_NOTE_QUIZ = 18
 private const val NAV_CHORD_EAR = 19
+private const val NAV_HELP = 20
+private const val NAV_PITCH_MONITOR = 21
 
 /**
  * Drawer navigation item metadata.
@@ -111,6 +118,7 @@ private fun drawerSections(): List<DrawerSection> = listOf(
     DrawerSection("Play", listOf(
         DrawerItem(NAV_EXPLORER, "Explorer", Icons.Filled.Home),
         DrawerItem(NAV_TUNER, "Tuner", Icons.Filled.Mic),
+        DrawerItem(NAV_PITCH_MONITOR, "Pitch Monitor", Icons.Filled.Equalizer),
         DrawerItem(NAV_LIBRARY, "Chords", Icons.Filled.Search),
         DrawerItem(NAV_FAVORITES, "Favorites", Icons.Filled.Favorite),
     )),
@@ -167,11 +175,13 @@ fun FretboardScreen(
     customProgressionViewModel: CustomProgressionViewModel = viewModel(),
     progressViewModel: com.baijum.ukufretboard.viewmodel.ProgressViewModel = viewModel(),
     tunerViewModel: TunerViewModel = viewModel(),
+    pitchMonitorViewModel: PitchMonitorViewModel = viewModel(),
     learningProgressViewModel: LearningProgressViewModel = viewModel(),
 ) {
     var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
     var showFullScreen by rememberSaveable { mutableStateOf(false) }
+    var shareChordInfo by remember { mutableStateOf<ShareChordInfo?>(null) }
 
     // Initialize SyncViewModel with SettingsViewModel reference
     LaunchedEffect(Unit) {
@@ -253,6 +263,19 @@ fun FretboardScreen(
                             )
                         }
                     }
+
+                    // Help item below all section groups
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Filled.Info, contentDescription = "Help") },
+                        label = { Text("Help") },
+                        selected = selectedSection == NAV_HELP,
+                        onClick = {
+                            selectedSection = NAV_HELP
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    )
                 }
             }
         },
@@ -262,8 +285,11 @@ fun FretboardScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            text = allItems.firstOrNull { it.index == selectedSection }?.label
-                                ?: "Explorer",
+                            text = when (selectedSection) {
+                                NAV_HELP -> "Help"
+                                else -> allItems.firstOrNull { it.index == selectedSection }?.label
+                                    ?: "Explorer"
+                            },
                             style = MaterialTheme.typography.titleLarge,
                         )
                     },
@@ -303,12 +329,22 @@ fun FretboardScreen(
                         soundEnabled = appSettings.sound.enabled,
                         leftHanded = appSettings.fretboard.leftHanded,
                         onFullScreen = { showFullScreen = true },
+                        onShareChord = { voicing, chordName, invLabel ->
+                            shareChordInfo = ShareChordInfo(
+                                voicing = voicing,
+                                chordName = chordName,
+                                inversionLabel = invLabel,
+                            )
+                        },
                     )
                     NAV_TUNER -> TunerTab(
                         viewModel = tunerViewModel,
                         tuning = appSettings.tuning.tuning,
                         leftHanded = appSettings.fretboard.leftHanded,
                         soundEnabled = appSettings.sound.enabled,
+                    )
+                    NAV_PITCH_MONITOR -> PitchMonitorTab(
+                        viewModel = pitchMonitorViewModel,
                     )
                     NAV_LIBRARY -> ChordLibraryTab(
                         viewModel = libraryViewModel,
@@ -318,11 +354,19 @@ fun FretboardScreen(
                         },
                         onVoicingLongPressed = { voicing ->
                             val state = libraryViewModel.uiState.value
+                            val rootName = Notes.pitchClassToName(state.selectedRoot)
                             val symbol = state.selectedFormula?.symbol ?: ""
-                            favoritesViewModel.toggleFavorite(
-                                rootPitchClass = state.selectedRoot,
-                                chordSymbol = symbol,
-                                frets = voicing.frets,
+                            val tuning = FretboardViewModel.STANDARD_TUNING
+                            val invLabel = state.selectedFormula?.let { formula ->
+                                val inv = ChordInfo.determineInversion(
+                                    voicing.frets, state.selectedRoot, formula, tuning,
+                                )
+                                if (inv != ChordInfo.Inversion.ROOT) inv.label else null
+                            }
+                            shareChordInfo = ShareChordInfo(
+                                voicing = voicing,
+                                chordName = "$rootName$symbol",
+                                inversionLabel = invLabel,
                             )
                         },
                     isFavorite = { voicing ->
@@ -392,6 +436,12 @@ fun FretboardScreen(
                             fretboardViewModel.applyVoicing(voicing)
                             selectedSection = NAV_EXPLORER
                         },
+                        onShareVoicing = { voicing, chordName ->
+                            shareChordInfo = ShareChordInfo(
+                                voicing = voicing,
+                                chordName = chordName,
+                            )
+                        },
                         leftHanded = appSettings.fretboard.leftHanded,
                     )
                     NAV_SONGBOOK -> SongbookTab(
@@ -440,6 +490,7 @@ fun FretboardScreen(
                     NAV_SCALE_CHORDS -> ScaleChordView()
                     NAV_GLOSSARY -> GlossaryView()
                     NAV_NOTE_MAP -> FretboardNoteMapView()
+                    NAV_HELP -> HelpView()
                 }
             }
         }
@@ -476,6 +527,14 @@ fun FretboardScreen(
             },
             syncViewModel = syncViewModel,
             onDismiss = { showSettings = false },
+        )
+    }
+
+    // Share chord bottom sheet
+    shareChordInfo?.let { info ->
+        ShareChordBottomSheet(
+            info = info,
+            onDismiss = { shareChordInfo = null },
         )
     }
 }
@@ -522,6 +581,7 @@ private fun ExplorerTabContent(
     soundEnabled: Boolean,
     leftHanded: Boolean = false,
     onFullScreen: () -> Unit = {},
+    onShareChord: ((ChordVoicing, String, String?) -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentTuning = uiState.tuning.ifEmpty { viewModel.tuning }
@@ -605,6 +665,35 @@ private fun ExplorerTabContent(
             .sortedBy { it.key }
             .map { it.value ?: 0 }
 
+        // Build share callback only when a chord is found
+        val shareCallback: (() -> Unit)? = if (
+            onShareChord != null &&
+            uiState.detectionResult is com.baijum.ukufretboard.domain.ChordDetector.DetectionResult.ChordFound
+        ) {
+            val chordFound = uiState.detectionResult as com.baijum.ukufretboard.domain.ChordDetector.DetectionResult.ChordFound
+            val chordResult = chordFound.result
+            val formula = chordResult.matchedFormula
+            val inversion = if (fretsList.size == 4 && formula != null) {
+                ChordInfo.determineInversion(fretsList, chordResult.root.pitchClass, formula, currentTuning)
+            } else null
+            val invLabel = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) inversion.label else null
+            val displayName = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) {
+                val bassPc = ChordInfo.bassPitchClass(fretsList, currentTuning)
+                ChordInfo.slashNotation(chordResult.name, inversion, bassPc)
+            } else {
+                chordResult.name
+            }
+            val shareVoicing = ChordVoicing(
+                frets = fretsList,
+                notes = chordResult.notes,
+                minFret = fretsList.filter { it > 0 }.minOrNull() ?: 0,
+                maxFret = fretsList.maxOrNull() ?: 0,
+            );
+            { onShareChord(shareVoicing, displayName, invLabel) }
+        } else {
+            null
+        }
+
         ChordResultView(
             detectionResult = uiState.detectionResult,
             fingerPositions = uiState.fingerPositions,
@@ -612,6 +701,7 @@ private fun ExplorerTabContent(
             soundEnabled = soundEnabled,
             frets = fretsList,
             tuning = currentTuning,
+            onShareChord = shareCallback,
             modifier = Modifier.fillMaxWidth(),
         )
     }
