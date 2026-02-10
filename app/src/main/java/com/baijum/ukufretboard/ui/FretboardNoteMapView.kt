@@ -181,8 +181,9 @@ fun FretboardNoteMapView(
                     }
                 }
 
-                // String rows
-                standardTuning.forEachIndexed { stringIndex, openPc ->
+                // String rows (reversed: A, E, C, G top-to-bottom)
+                standardTuning.indices.reversed().forEach { stringIndex ->
+                    val openPc = standardTuning[stringIndex]
                     val baseOctave = octaves[stringIndex]
                     Row(
                         modifier = Modifier

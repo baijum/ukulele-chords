@@ -124,8 +124,9 @@ fun FretboardView(
             Spacer(modifier = Modifier.height(FRET_NUMBER_HEIGHT))
             // Spacer aligned with marker row
             Spacer(modifier = Modifier.height(MARKER_HEIGHT))
-            // One label per string
-            tuning.forEach { string ->
+            // One label per string (reversed: A, E, C, G top-to-bottom
+            // to match the player's perspective looking down at the fretboard)
+            tuning.indices.reversed().forEach { i ->
                 Box(
                     modifier = Modifier
                         .width(FRETBOARD_LABEL_WIDTH)
@@ -133,7 +134,7 @@ fun FretboardView(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = string.name,
+                        text = tuning[i].name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -162,8 +163,8 @@ fun FretboardView(
             // Position markers row (dots at frets 5, 7, 10, 12)
             FretMarkersRow(fretRange = fretRange, cellWidth = cellWidth)
 
-            // String rows with fret cells
-            tuning.forEachIndexed { stringIndex, _ ->
+            // String rows with fret cells (reversed: A, E, C, G top-to-bottom)
+            tuning.indices.reversed().forEach { stringIndex ->
                 Row {
                     fretRange.forEach { fret ->
                         val note = getNoteAt(stringIndex, fret)
