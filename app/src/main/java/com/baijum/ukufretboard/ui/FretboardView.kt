@@ -22,7 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -63,11 +65,11 @@ private val OPEN_STRING_DOT_SIZE = 28.dp
 private val FretboardBackgroundLight = Color(0xFFF5E6D3)
 private val FretboardBackgroundDark = Color(0xFF3A322D)
 
-/** Fret numbers where traditional position markers (dots) appear. */
-private val SINGLE_MARKER_FRETS = setOf(5, 7, 10)
+/** Fret numbers where traditional single-dot position markers appear. */
+private val SINGLE_MARKER_FRETS = setOf(3, 5, 7, 10, 15, 17, 19)
 
-/** Fret number where a double position marker appears. */
-private const val DOUBLE_MARKER_FRET = 12
+/** Fret numbers where double-dot position markers appear (octave positions). */
+private val DOUBLE_MARKER_FRETS = setOf(12)
 
 /**
  * Interactive ukulele fretboard rendered as a horizontally scrollable grid.
@@ -101,6 +103,8 @@ fun FretboardView(
     scaleNotes: Set<Int> = emptySet(),
     scaleRoot: Int? = null,
     scalePositionFretRange: IntRange? = null,
+    capoFret: Int = 0,
+    lastFret: Int = FretboardViewModel.LAST_FRET,
     cellWidth: Dp = CELL_WIDTH,
     cellHeight: Dp = CELL_HEIGHT,
     scrollable: Boolean = true,
@@ -108,9 +112,9 @@ fun FretboardView(
 ) {
     val scrollState = rememberScrollState()
     val fretRange = if (leftHanded) {
-        (FretboardViewModel.LAST_FRET downTo FretboardViewModel.OPEN_STRING_FRET).toList()
+        (lastFret downTo FretboardViewModel.OPEN_STRING_FRET).toList()
     } else {
-        (FretboardViewModel.OPEN_STRING_FRET..FretboardViewModel.LAST_FRET).toList()
+        (FretboardViewModel.OPEN_STRING_FRET..lastFret).toList()
     }
 
     Row(modifier = modifier.padding(start = 4.dp)) {
@@ -153,7 +157,7 @@ fun FretboardView(
                 .padding(end = 4.dp),
         ) {
             // Fret numbers row
-            FretNumbersRow(fretRange = fretRange, cellWidth = cellWidth)
+            FretNumbersRow(fretRange = fretRange, capoFret = capoFret, cellWidth = cellWidth)
 
             // Position markers row (dots at frets 5, 7, 10, 12)
             FretMarkersRow(fretRange = fretRange, cellWidth = cellWidth)
@@ -166,6 +170,7 @@ fun FretboardView(
                         val inScale = note.pitchClass in scaleNotes &&
                             (scalePositionFretRange == null || fret in scalePositionFretRange)
                         val isScaleRoot = scaleRoot != null && note.pitchClass == scaleRoot
+                        val blocked = capoFret > 0 && fret in 1..capoFret
                         FretCell(
                             note = note,
                             isSelected = selections[stringIndex] == fret,
@@ -175,6 +180,8 @@ fun FretboardView(
                             isNutOnLeft = !leftHanded,
                             isInScale = inScale,
                             isScaleRoot = isScaleRoot,
+                            isCapoFret = capoFret > 0 && fret == capoFret,
+                            isBlockedByCapo = blocked,
                             modifier = Modifier.size(cellWidth, cellHeight),
                         )
                     }
@@ -184,24 +191,49 @@ fun FretboardView(
     }
 }
 
+/** Accent color for the capo fret number badge. */
+private val CapoBadgeColor = Color(0xFFD4A24C)
+
 /**
  * Row of fret numbers (0–12) displayed above the fretboard grid.
+ * The capo fret number is highlighted with a badge.
  */
 @Composable
-private fun FretNumbersRow(fretRange: List<Int>, cellWidth: Dp = CELL_WIDTH) {
+private fun FretNumbersRow(fretRange: List<Int>, capoFret: Int = 0, cellWidth: Dp = CELL_WIDTH) {
     Row {
         fretRange.forEach { fret ->
+            val isCapo = capoFret > 0 && fret == capoFret
+            val isBlocked = capoFret > 0 && fret in 1 until capoFret
             Box(
                 modifier = Modifier
                     .width(cellWidth)
                     .height(FRET_NUMBER_HEIGHT),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = fret.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (isCapo) {
+                    Box(
+                        modifier = Modifier
+                            .background(CapoBadgeColor, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = fret.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                } else {
+                    Text(
+                        text = fret.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isBlocked)
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -233,7 +265,7 @@ private fun FretMarkersRow(fretRange: List<Int>, cellWidth: Dp = CELL_WIDTH) {
                                 .background(markerColor, CircleShape),
                         )
                     }
-                    fret == DOUBLE_MARKER_FRET -> {
+                    fret in DOUBLE_MARKER_FRETS -> {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Box(
                                 modifier = Modifier
@@ -285,6 +317,8 @@ private fun FretCell(
     isNutOnLeft: Boolean = true,
     isInScale: Boolean = false,
     isScaleRoot: Boolean = false,
+    isCapoFret: Boolean = false,
+    isBlockedByCapo: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -295,10 +329,18 @@ private fun FretCell(
     val nutColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
     val scaleColor = Color(0xFF2196F3).copy(alpha = 0.3f) // light blue
     val scaleRootColor = Color(0xFF1565C0).copy(alpha = 0.5f) // darker blue
+    val capoBarColor = CapoBadgeColor
+    val blockedOverlay = if (isSystemInDarkTheme()) {
+        FretboardBackgroundDark.copy(alpha = 0.45f)
+    } else {
+        FretboardBackgroundLight.copy(alpha = 0.45f)
+    }
 
     Box(
         modifier = modifier
-            .clickable(onClick = onClick)
+            .then(
+                if (isBlockedByCapo) Modifier else Modifier.clickable(onClick = onClick)
+            )
             .drawBehind {
                 // Draw string — horizontal line through the vertical center
                 drawLine(
@@ -325,72 +367,89 @@ private fun FretCell(
                         strokeWidth = 1.5f,
                     )
                 }
+                // Capo bar — thick golden bar across the cell center
+                if (isCapoFret) {
+                    val barHeight = 8f
+                    drawRoundRect(
+                        color = capoBarColor,
+                        topLeft = Offset(0f, (size.height - barHeight) / 2),
+                        size = Size(size.width, barHeight),
+                        cornerRadius = CornerRadius(barHeight / 2),
+                    )
+                }
+                // Dim blocked cells behind the capo
+                if (isBlockedByCapo && !isCapoFret) {
+                    drawRect(color = blockedOverlay)
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
-        when {
-            isSelected -> {
-                // Filled circle for selected fret position
-                Box(
-                    modifier = Modifier
-                        .size(SELECTED_DOT_SIZE)
-                        .background(primaryColor, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (showNoteNames) {
-                        Text(
-                            text = note.name,
-                            color = onPrimaryColor,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-            isOpenString -> {
-                // Outlined circle for open string
-                Box(
-                    modifier = Modifier
-                        .size(OPEN_STRING_DOT_SIZE)
-                        .border(2.dp, outlineColor, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (showNoteNames) {
-                        Text(
-                            text = note.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = outlineColor,
-                        )
-                    }
-                }
-            }
-            else -> {
-                if (isInScale && !isOpenString) {
-                    // Scale overlay dot for unselected positions
+        // Blocked cells show no content (only the string/fret wire and optional capo bar)
+        if (!isBlockedByCapo) {
+            when {
+                isSelected -> {
+                    // Filled circle for selected fret position
                     Box(
                         modifier = Modifier
-                            .size(SCALE_DOT_SIZE)
-                            .background(
-                                if (isScaleRoot) scaleRootColor else scaleColor,
-                                CircleShape,
-                            ),
+                            .size(SELECTED_DOT_SIZE)
+                            .background(primaryColor, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (showNoteNames) {
+                            Text(
+                                text = note.name,
+                                color = onPrimaryColor,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+                isOpenString -> {
+                    // Outlined circle for open string
+                    Box(
+                        modifier = Modifier
+                            .size(OPEN_STRING_DOT_SIZE)
+                            .border(2.dp, outlineColor, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (showNoteNames) {
                             Text(
                                 text = note.name,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.9f),
+                                color = outlineColor,
                             )
                         }
                     }
-                } else if (showNoteNames) {
-                    // Subtle note name for unselected fretted positions
-                    Text(
-                        text = note.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = outlineColor.copy(alpha = 0.6f),
-                    )
+                }
+                else -> {
+                    if (isInScale && !isOpenString) {
+                        // Scale overlay dot for unselected positions
+                        Box(
+                            modifier = Modifier
+                                .size(SCALE_DOT_SIZE)
+                                .background(
+                                    if (isScaleRoot) scaleRootColor else scaleColor,
+                                    CircleShape,
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (showNoteNames) {
+                                Text(
+                                    text = note.name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                )
+                            }
+                        }
+                    } else if (showNoteNames) {
+                        // Subtle note name for unselected fretted positions
+                        Text(
+                            text = note.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = outlineColor.copy(alpha = 0.6f),
+                        )
+                    }
                 }
             }
         }

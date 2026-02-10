@@ -62,7 +62,14 @@ data class FretboardUiState(
     val detectionResult: ChordDetector.DetectionResult = ChordDetector.DetectionResult.NoSelection,
     val scaleOverlay: ScaleOverlayState = ScaleOverlayState(),
     val tuning: List<UkuleleString> = emptyList(),
+    val capoFret: Int = 0,
+    val lastFret: Int = LAST_FRET,
 ) {
+    companion object {
+        /** Default last fret (matches FretboardViewModel.LAST_FRET). */
+        const val LAST_FRET = 12
+    }
+
     /**
      * Human-readable finger position string derived from the current selections.
      * Format: "0 - 0 - 0 - 3" (one entry per string, "x" for unselected strings).
@@ -88,8 +95,11 @@ class FretboardViewModel : ViewModel() {
         /** Index of the first fret (open string). */
         const val OPEN_STRING_FRET = 0
 
-        /** Index of the last fret. */
+        /** Default last fret (minimum for the configurable range). */
         const val LAST_FRET = 12
+
+        /** Maximum configurable last fret. */
+        const val MAX_LAST_FRET = 22
 
         /**
          * Standard ukulele tuning (high-G / re-entrant).
@@ -181,6 +191,9 @@ class FretboardViewModel : ViewModel() {
      * @param fret The fret number (0 = open string, 1–12 = fretted positions).
      */
     fun toggleFret(stringIndex: Int, fret: Int) {
+        val capo = _uiState.value.capoFret
+        if (capo > 0 && fret in 1..capo) return // blocked by capo
+
         val wasSelected = _uiState.value.selections[stringIndex] == fret
         _uiState.update { current ->
             val currentFret = current.selections[stringIndex]
@@ -206,7 +219,53 @@ class FretboardViewModel : ViewModel() {
      */
     fun clearAll() {
         _uiState.update {
-            FretboardUiState(showNoteNames = it.showNoteNames)
+            FretboardUiState(showNoteNames = it.showNoteNames, tuning = it.tuning)
+        }
+    }
+
+    /**
+     * Sets the capo fret position.
+     *
+     * When capo is > 0, all pitch calculations (chord detection, note names,
+     * sound playback) are shifted up by the capo amount, matching the behavior
+     * of a real capo clamped at that fret.
+     *
+     * @param fret The fret position for the capo (0 = no capo, 1–12 = capo at fret).
+     */
+    fun setCapoFret(fret: Int) {
+        _uiState.update { current ->
+            val newCapo = fret.coerceIn(0, current.lastFret)
+            // Clear any selections that fall behind the new capo position
+            val cleaned = current.selections.mapValues { (_, sel) ->
+                if (sel != null && newCapo > 0 && sel in 1..newCapo) null else sel
+            }
+            current.copy(
+                capoFret = newCapo,
+                selections = cleaned,
+                detectionResult = detectChord(cleaned, newCapo),
+            )
+        }
+    }
+
+    /**
+     * Sets the highest fret shown on the fretboard (12–22).
+     *
+     * If the current capo position exceeds the new last fret, the capo is
+     * coerced down. Selections beyond the new range are cleared.
+     */
+    fun setLastFret(fret: Int) {
+        _uiState.update { current ->
+            val newLast = fret.coerceIn(LAST_FRET, MAX_LAST_FRET)
+            val newCapo = current.capoFret.coerceAtMost(newLast)
+            val cleaned = current.selections.mapValues { (_, sel) ->
+                if (sel != null && sel > newLast) null else sel
+            }
+            current.copy(
+                lastFret = newLast,
+                capoFret = newCapo,
+                selections = cleaned,
+                detectionResult = detectChord(cleaned, newCapo),
+            )
         }
     }
 
@@ -298,7 +357,8 @@ class FretboardViewModel : ViewModel() {
      */
     fun getNoteAt(stringIndex: Int, fret: Int): Note {
         val openPitchClass = tuning[stringIndex].openPitchClass
-        val pitchClass = (openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
+        val capo = _uiState.value.capoFret
+        val pitchClass = (openPitchClass + fret + capo) % Notes.PITCH_CLASS_COUNT
         val overlay = _uiState.value.scaleOverlay
         val name = if (overlay.enabled && overlay.scale != null) {
             // Use key-aware enharmonic spelling when a scale is active
@@ -322,8 +382,9 @@ class FretboardViewModel : ViewModel() {
     fun playChord() {
         if (!soundSettings.enabled) return
 
-        val selections = _uiState.value.selections
-        val notes = selections.entries
+        val state = _uiState.value
+        val capo = state.capoFret
+        val notes = state.selections.entries
             .let { entries ->
                 if (soundSettings.strumDown) entries.sortedBy { it.key }
                 else entries.sortedByDescending { it.key }
@@ -331,8 +392,8 @@ class FretboardViewModel : ViewModel() {
             .filter { it.value != null }
             .map { (stringIndex, fret) ->
                 val string = tuning[stringIndex]
-                val pitchClass = (string.openPitchClass + fret!!) % Notes.PITCH_CLASS_COUNT
-                val octave = computeOctave(string.openPitchClass, string.octave, fret)
+                val pitchClass = (string.openPitchClass + fret!! + capo) % Notes.PITCH_CLASS_COUNT
+                val octave = computeOctave(string.openPitchClass, string.octave, fret + capo)
                 pitchClass to octave
             }
 
@@ -420,8 +481,9 @@ class FretboardViewModel : ViewModel() {
      */
     private fun playNoteAt(stringIndex: Int, fret: Int) {
         val string = tuning[stringIndex]
-        val pitchClass = (string.openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
-        val octave = computeOctave(string.openPitchClass, string.octave, fret)
+        val capo = _uiState.value.capoFret
+        val pitchClass = (string.openPitchClass + fret + capo) % Notes.PITCH_CLASS_COUNT
+        val octave = computeOctave(string.openPitchClass, string.octave, fret + capo)
         viewModelScope.launch {
             ToneGenerator.playNote(
                 pitchClass = pitchClass,
@@ -474,12 +536,15 @@ class FretboardViewModel : ViewModel() {
      * Collects the pitch class for each string that has a fret selected,
      * then delegates to [ChordDetector.detect] for interval-based matching.
      */
-    private fun detectChord(selections: Map<Int, Int?>): ChordDetector.DetectionResult {
+    private fun detectChord(
+        selections: Map<Int, Int?>,
+        capo: Int = _uiState.value.capoFret,
+    ): ChordDetector.DetectionResult {
         val pitchClasses = selections.entries
             .filter { it.value != null }
             .map { (stringIndex, fret) ->
                 val openPitchClass = tuning[stringIndex].openPitchClass
-                (openPitchClass + fret!!) % Notes.PITCH_CLASS_COUNT
+                (openPitchClass + fret!! + capo) % Notes.PITCH_CLASS_COUNT
             }
         return ChordDetector.detect(pitchClasses)
     }

@@ -207,5 +207,6 @@ data class BackupSettings(
     val themeMode: String = "SYSTEM",
     val tuning: String = "HIGH_G",
     val leftHanded: Boolean = false,
+    val lastFret: Int = 12,
     val chordOfDayEnabled: Boolean = false,
 )

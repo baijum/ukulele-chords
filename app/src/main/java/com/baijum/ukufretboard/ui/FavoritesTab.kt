@@ -167,7 +167,7 @@ fun FavoritesTab(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(bottom = 4.dp),
                             )
-                            ChordDiagramPreview(
+                            VerticalChordDiagram(
                                 voicing = voicing,
                                 onClick = { onVoicingSelected(voicing) },
                                 onLongClick = onShareVoicing?.let { share ->

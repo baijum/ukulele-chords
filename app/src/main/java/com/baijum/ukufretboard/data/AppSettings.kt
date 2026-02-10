@@ -70,7 +70,24 @@ enum class UkuleleTuning(
     HIGH_G("High-G (Standard)", listOf("G","C","E","A"), listOf(7,0,4,9), listOf(4,4,4,4)),
     LOW_G("Low-G", listOf("g","C","E","A"), listOf(7,0,4,9), listOf(3,4,4,4)),
     BARITONE("Baritone (DGBE)", listOf("D","G","B","E"), listOf(2,7,11,4), listOf(3,3,4,4)),
-    D_TUNING("D-Tuning (ADF#B)", listOf("A","D","F#","B"), listOf(9,2,6,11), listOf(4,4,4,4)),
+    D_TUNING("D-Tuning (ADF#B)", listOf("A","D","F#","B"), listOf(9,2,6,11), listOf(4,4,4,4));
+
+    /**
+     * Whether this tuning is re-entrant (string pitches are not monotonically ascending).
+     *
+     * In re-entrant tuning the first string is higher than the second, which limits
+     * the variety of chord inversions because the second string (C4 in High-G)
+     * is almost always the lowest-pitched note.
+     */
+    val isReentrant: Boolean
+        get() {
+            for (i in 0 until octaves.size - 1) {
+                val pitchA = octaves[i] * 12 + pitchClasses[i]
+                val pitchB = octaves[i + 1] * 12 + pitchClasses[i + 1]
+                if (pitchA > pitchB) return true
+            }
+            return false
+        }
 }
 
 /**
@@ -87,10 +104,18 @@ data class TuningSettings(
  *
  * @property leftHanded When true, the fretboard is mirrored horizontally
  *   so the nut appears on the right (matching a left-handed player's view).
+ * @property lastFret The highest fret shown on the fretboard (12–22, default 12).
  */
 data class FretboardSettings(
     val leftHanded: Boolean = false,
-)
+    val lastFret: Int = DEFAULT_LAST_FRET,
+) {
+    companion object {
+        const val MIN_LAST_FRET = 12
+        const val MAX_LAST_FRET = 22
+        const val DEFAULT_LAST_FRET = 12
+    }
+}
 
 /**
  * Settings for daily chord notification.

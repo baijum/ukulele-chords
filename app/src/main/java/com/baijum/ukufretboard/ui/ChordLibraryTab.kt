@@ -204,6 +204,18 @@ fun ChordLibraryTab(
             } else {
                 // ── Normal grid mode ──
 
+                // Pre-compute inversion counts for filter chip badges
+                val inversionCounts = remember(uiState.voicings, uiState.selectedRoot, uiState.selectedFormula) {
+                    uiState.voicings.groupingBy { voicing ->
+                        ChordInfo.determineInversion(
+                            voicing.frets,
+                            uiState.selectedRoot,
+                            uiState.selectedFormula!!,
+                            tuning,
+                        )
+                    }.eachCount()
+                }
+
                 // Apply inversion filter to voicings
                 val filteredVoicings = if (inversionFilter != null) {
                     uiState.voicings.filter { voicing ->
@@ -238,6 +250,7 @@ fun ChordLibraryTab(
                             selected = inversionFilter,
                             onSelected = { inversionFilter = it },
                             hasSeventhIntervals = uiState.selectedFormula?.intervals?.any { it >= 10 } == true,
+                            inversionCounts = inversionCounts,
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -269,6 +282,15 @@ fun ChordLibraryTab(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // Build a contextual empty-state message when an inversion filter is active
+                val inversionEmptySubtitle = if (inversionFilter != null && filteredVoicings.isEmpty()) {
+                    "In re-entrant tuning (High-G), the C string is almost always " +
+                        "the lowest note, so most voicings are root position. " +
+                        "Try selecting \"All\" to see available voicings."
+                } else {
+                    null
+                }
+
                 VoicingGrid(
                     voicings = filteredVoicings,
                     onVoicingSelected = onVoicingSelected,
@@ -280,6 +302,12 @@ fun ChordLibraryTab(
                     leftHanded = leftHanded,
                     rootPitchClass = uiState.selectedRoot,
                     formula = uiState.selectedFormula,
+                    emptyTitle = if (inversionFilter != null) {
+                        "No ${inversionFilter!!.label.lowercase()} voicings"
+                    } else {
+                        "No voicings found"
+                    },
+                    emptySubtitle = inversionEmptySubtitle,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -432,9 +460,13 @@ private fun FormulaSelector(
 /**
  * Emits inversion filter chips inline (no wrapping Row — caller provides the container).
  *
+ * Each chip shows a voicing count badge (e.g., "1st Inv (3)") so users can see
+ * at a glance how many voicings exist for each inversion before tapping.
+ *
  * @param selected The currently selected inversion filter, or null for "All".
  * @param onSelected Callback when a filter chip is tapped.
  * @param hasSeventhIntervals Whether to show the "3rd Inv" chip (only for 7th chords).
+ * @param inversionCounts Map of inversion type to voicing count, used for badge display.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -442,7 +474,10 @@ private fun InversionFilterChips(
     selected: ChordInfo.Inversion?,
     onSelected: (ChordInfo.Inversion?) -> Unit,
     hasSeventhIntervals: Boolean = false,
+    inversionCounts: Map<ChordInfo.Inversion, Int> = emptyMap(),
 ) {
+    val totalCount = inversionCounts.values.sum()
+
     val options = buildList {
         add(null to "All")
         add(ChordInfo.Inversion.ROOT to "Root")
@@ -455,12 +490,14 @@ private fun InversionFilterChips(
 
     options.forEach { (inversion, label) ->
         val isSelected = inversion == selected
+        val count = if (inversion == null) totalCount else inversionCounts[inversion] ?: 0
+        val displayLabel = if (inversionCounts.isNotEmpty()) "$label ($count)" else label
         FilterChip(
             selected = isSelected,
             onClick = { onSelected(inversion) },
             label = {
                 Text(
-                    text = label,
+                    text = displayLabel,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 )
             },
@@ -590,7 +627,7 @@ private fun InversionCompareView(
                 ) {
                     items(voicings) { voicing ->
                         val bassIndex = ChordInfo.findBassStringIndex(voicing.frets, tuning)
-                        ChordDiagramPreview(
+                        VerticalChordDiagram(
                             voicing = voicing,
                             onClick = { onVoicingSelected(voicing) },
                             leftHanded = leftHanded,
@@ -603,12 +640,14 @@ private fun InversionCompareView(
             }
         }
 
-        // Handle case: only root position
+        // Handle case: only one inversion type available
         if (availableInversions.size == 1) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "This chord only has ${availableInversions.first().label.lowercase()} voicings in standard tuning.",
+                    text = "This chord only has ${availableInversions.first().label.lowercase()} voicings. " +
+                        "Re-entrant tuning (High-G) limits inversions because the C string (C4) " +
+                        "is almost always the lowest pitch. Low-G tuning allows more inversion variety.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -624,6 +663,10 @@ private fun InversionCompareView(
  * Each card shows a chord diagram with an optional heart icon for
  * toggling favorites. When [rootPitchClass] and [formula] are provided,
  * each voicing is labeled with its inversion type and the bass note is highlighted.
+ *
+ * @param emptyTitle Primary message shown when no voicings are available.
+ * @param emptySubtitle Optional secondary message providing context (e.g., why
+ *   an inversion filter returned no results).
  */
 @Composable
 private fun VoicingGrid(
@@ -637,6 +680,8 @@ private fun VoicingGrid(
     leftHanded: Boolean = false,
     rootPitchClass: Int = 0,
     formula: ChordFormula? = null,
+    emptyTitle: String = "No voicings found",
+    emptySubtitle: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val tuning = FretboardViewModel.STANDARD_TUNING
@@ -649,10 +694,19 @@ private fun VoicingGrid(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "No voicings found",
+                text = emptyTitle,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (emptySubtitle != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = emptySubtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
         }
     } else {
         LazyVerticalGrid(
@@ -672,7 +726,7 @@ private fun VoicingGrid(
                 }
 
                 Box {
-                    ChordDiagramPreview(
+                    VerticalChordDiagram(
                         voicing = voicing,
                         onClick = { onVoicingSelected(voicing) },
                         onLongClick = onVoicingLongPressed?.let { callback -> { callback(voicing) } },

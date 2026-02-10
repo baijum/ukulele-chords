@@ -176,7 +176,7 @@ fun CapoVisualizerView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                ChordDiagramPreview(
+                VerticalChordDiagram(
                     voicing = voicing,
                     onClick = {},
                     leftHanded = leftHanded,
@@ -201,7 +201,7 @@ fun CapoVisualizerView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                ChordDiagramPreview(
+                VerticalChordDiagram(
                     voicing = voicing,
                     onClick = {},
                     leftHanded = leftHanded,

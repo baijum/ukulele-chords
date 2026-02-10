@@ -146,6 +146,7 @@ class BackupRestoreManager(
                     themeMode = s.display.themeMode.name,
                     tuning = s.tuning.tuning.name,
                     leftHanded = s.fretboard.leftHanded,
+                    lastFret = s.fretboard.lastFret,
                     chordOfDayEnabled = s.notification.chordOfDayEnabled,
                 )
             },
@@ -241,7 +242,10 @@ class BackupRestoreManager(
                         UkuleleTuning.HIGH_G
                     },
                 ),
-                fretboard = FretboardSettings(leftHanded = bs.leftHanded),
+                fretboard = FretboardSettings(
+                    leftHanded = bs.leftHanded,
+                    lastFret = bs.lastFret,
+                ),
                 notification = NotificationSettings(chordOfDayEnabled = bs.chordOfDayEnabled),
             )
         )

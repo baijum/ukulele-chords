@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun FretboardNoteMapView(
+    lastFret: Int = 12,
     modifier: Modifier = Modifier,
 ) {
     // Standard ukulele tuning: G4=7, C4=0, E4=4, A4=9
@@ -63,7 +64,7 @@ fun FretboardNoteMapView(
     var isLowG by remember { mutableStateOf(false) }
     var highlightNote by remember { mutableIntStateOf(-1) } // -1 = none
     val scope = rememberCoroutineScope()
-    val maxFret = 12
+    val maxFret = lastFret
 
     Column(
         modifier = modifier

@@ -350,6 +350,17 @@ private fun FretboardSection(
         checked = settings.leftHanded,
         onCheckedChange = { onSettingsChange(settings.copy(leftHanded = it)) },
     )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    SettingsSlider(
+        label = "Frets",
+        value = settings.lastFret.toFloat(),
+        valueRange = FretboardSettings.MIN_LAST_FRET.toFloat()..FretboardSettings.MAX_LAST_FRET.toFloat(),
+        valueLabel = "${settings.lastFret}",
+        enabled = true,
+        onValueChange = { onSettingsChange(settings.copy(lastFret = it.toInt())) },
+    )
 }
 
 /**

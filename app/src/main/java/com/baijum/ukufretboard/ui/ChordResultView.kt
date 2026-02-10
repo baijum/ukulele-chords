@@ -1,5 +1,6 @@
 package com.baijum.ukufretboard.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.domain.ChordDetector
 import com.baijum.ukufretboard.domain.ChordInfo
@@ -56,7 +58,9 @@ fun ChordResultView(
     soundEnabled: Boolean = true,
     frets: List<Int>? = null,
     tuning: List<UkuleleString> = FretboardViewModel.STANDARD_TUNING,
+    capoFret: Int = 0,
     onShareChord: (() -> Unit)? = null,
+    onShowInLibrary: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val hasNotes = detectionResult !is ChordDetector.DetectionResult.NoSelection
@@ -110,15 +114,18 @@ fun ChordResultView(
                 val formula = result.matchedFormula
 
                 // Compute inversion if we have frets and a formula
-                val inversion = if (frets != null && frets.size == 4 && formula != null) {
-                    ChordInfo.determineInversion(frets, result.root.pitchClass, formula, tuning)
+                // Use capo-adjusted frets so inversion/bass calculations
+                // reflect the actual sounding pitches
+                val invFrets = frets?.map { it + capoFret }
+                val inversion = if (invFrets != null && invFrets.size == 4 && formula != null) {
+                    ChordInfo.determineInversion(invFrets, result.root.pitchClass, formula, tuning)
                 } else {
                     null
                 }
 
                 // Show chord name with slash notation for inversions
                 val displayName = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) {
-                    val bassPc = ChordInfo.bassPitchClass(frets!!, tuning)
+                    val bassPc = ChordInfo.bassPitchClass(invFrets!!, tuning)
                     ChordInfo.slashNotation(result.name, inversion, bassPc)
                 } else {
                     result.name
@@ -129,6 +136,7 @@ fun ChordResultView(
                     onPlay = onPlayChord,
                     showPlay = soundEnabled,
                     onShare = onShareChord,
+                    onShowInLibrary = onShowInLibrary,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -219,12 +227,13 @@ fun ChordResultView(
                         value = ChordInfo.rateDifficulty(frets),
                     )
 
-                    // Inversion
+                    // Inversion (use capo-adjusted frets for correct sounding pitch)
+                    val detailedInvFrets = frets.map { it + capoFret }
                     val detailedInversion = ChordInfo.determineInversion(
-                        frets, result.root.pitchClass, formula, tuning,
+                        detailedInvFrets, result.root.pitchClass, formula, tuning,
                     )
                     val bassNoteName = com.baijum.ukufretboard.data.Notes.pitchClassToName(
-                        ChordInfo.bassPitchClass(frets, tuning)
+                        ChordInfo.bassPitchClass(detailedInvFrets, tuning)
                     )
                     ChordInfoRow(
                         label = "Inversion",
@@ -281,6 +290,7 @@ private fun ChordHeadlineWithPlay(
     showPlay: Boolean = true,
     isSmall: Boolean = false,
     onShare: (() -> Unit)? = null,
+    onShowInLibrary: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -291,6 +301,9 @@ private fun ChordHeadlineWithPlay(
             else MaterialTheme.typography.headlineLarge,
             color = if (isSmall) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.primary,
+            textDecoration = if (onShowInLibrary != null) TextDecoration.Underline else null,
+            modifier = if (onShowInLibrary != null) Modifier.clickable { onShowInLibrary() }
+            else Modifier,
         )
         if (showPlay) {
             Spacer(modifier = Modifier.width(8.dp))

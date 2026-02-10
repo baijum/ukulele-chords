@@ -133,8 +133,8 @@ fun FullScreenFretboard(
                 showOverlay = !showOverlay
             },
     ) {
-        // Dynamic cell sizing: fill available width with 13 fret columns
-        val fretCount = 13 // frets 0–12
+        // Dynamic cell sizing: fill available width with all fret columns
+        val fretCount = uiState.lastFret + 1 // frets 0 through lastFret
         val availableWidth = maxWidth - FRETBOARD_LABEL_WIDTH - 8.dp // label + padding
         val dynamicCellWidth = availableWidth / fretCount
         // Scale height proportionally but cap to available height
@@ -160,6 +160,8 @@ fun FullScreenFretboard(
             leftHanded = leftHanded,
             scaleNotes = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.scaleNotes else emptySet(),
             scaleRoot = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.root else null,
+            capoFret = uiState.capoFret,
+            lastFret = uiState.lastFret,
             cellWidth = dynamicCellWidth,
             cellHeight = dynamicCellHeight,
             scrollable = false,

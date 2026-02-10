@@ -267,7 +267,7 @@ private fun CapoResultCard(
             }
 
             // Mini diagram
-            ChordDiagramPreview(
+            VerticalChordDiagram(
                 voicing = result.bestVoicing,
                 onClick = {},
                 leftHanded = leftHanded,
@@ -369,7 +369,7 @@ private fun CapoProgressionResultCard(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                         )
-                        ChordDiagramPreview(
+                        VerticalChordDiagram(
                             voicing = chordResult.bestVoicing,
                             onClick = {},
                             leftHanded = leftHanded,

@@ -120,6 +120,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             .putString(KEY_TUNING, s.tuning.tuning.name)
             // Fretboard
             .putBoolean(KEY_LEFT_HANDED, s.fretboard.leftHanded)
+            .putInt(KEY_LAST_FRET, s.fretboard.lastFret)
             // Notification
             .putBoolean(KEY_CHORD_OF_DAY_ENABLED, s.notification.chordOfDayEnabled)
             .apply()
@@ -153,6 +154,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             ),
             fretboard = FretboardSettings(
                 leftHanded = prefs.getBoolean(KEY_LEFT_HANDED, false),
+                lastFret = prefs.getInt(KEY_LAST_FRET, FretboardSettings.DEFAULT_LAST_FRET),
             ),
             notification = NotificationSettings(
                 chordOfDayEnabled = prefs.getBoolean(KEY_CHORD_OF_DAY_ENABLED, false),
@@ -171,6 +173,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_TUNING = "tuning"
         private const val KEY_LEFT_HANDED = "left_handed"
+        private const val KEY_LAST_FRET = "last_fret"
         private const val KEY_CHORD_OF_DAY_ENABLED = "chord_of_day_enabled"
     }
 }

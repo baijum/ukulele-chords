@@ -149,7 +149,7 @@ fun VoiceLeadingView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
-                ChordDiagramPreview(
+                VerticalChordDiagram(
                     voicing = path.steps[0].voicing,
                     onClick = { onPlayVoicing?.invoke(path.steps[0].voicing) },
                     leftHanded = leftHanded,
@@ -313,7 +313,7 @@ private fun TransitionDiagrams(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ChordDiagramPreview(
+            VerticalChordDiagram(
                 voicing = fromStep.voicing,
                 onClick = { onPlayFrom?.invoke() },
                 leftHanded = leftHanded,
@@ -352,7 +352,7 @@ private fun TransitionDiagrams(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ChordDiagramPreview(
+            VerticalChordDiagram(
                 voicing = toStep.voicing,
                 onClick = { onPlayTo?.invoke() },
                 leftHanded = leftHanded,

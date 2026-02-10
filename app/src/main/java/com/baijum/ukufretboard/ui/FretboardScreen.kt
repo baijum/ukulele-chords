@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Create
@@ -217,6 +218,11 @@ fun FretboardScreen(
         fretboardViewModel.setTuningSettings(appSettings.tuning)
     }
 
+    // Sync fret count setting
+    LaunchedEffect(appSettings.fretboard.lastFret) {
+        fretboardViewModel.setLastFret(appSettings.fretboard.lastFret)
+    }
+
     // Full-screen landscape fretboard mode
     if (showFullScreen) {
         FullScreenFretboard(
@@ -335,6 +341,12 @@ fun FretboardScreen(
                                 chordName = chordName,
                                 inversionLabel = invLabel,
                             )
+                        },
+                        onShowInLibrary = { rootPitchClass, formula ->
+                            libraryViewModel.selectRoot(rootPitchClass)
+                            libraryViewModel.selectCategory(formula.category)
+                            libraryViewModel.selectFormula(formula)
+                            selectedSection = NAV_LIBRARY
                         },
                     )
                     NAV_TUNER -> TunerTab(
@@ -489,7 +501,9 @@ fun FretboardScreen(
                     )
                     NAV_SCALE_CHORDS -> ScaleChordView()
                     NAV_GLOSSARY -> GlossaryView()
-                    NAV_NOTE_MAP -> FretboardNoteMapView()
+                    NAV_NOTE_MAP -> FretboardNoteMapView(
+                        lastFret = appSettings.fretboard.lastFret,
+                    )
                     NAV_HELP -> HelpView()
                 }
             }
@@ -582,6 +596,7 @@ private fun ExplorerTabContent(
     leftHanded: Boolean = false,
     onFullScreen: () -> Unit = {},
     onShareChord: ((ChordVoicing, String, String?) -> Unit)? = null,
+    onShowInLibrary: ((rootPitchClass: Int, formula: com.baijum.ukufretboard.data.ChordFormula) -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentTuning = uiState.tuning.ifEmpty { viewModel.tuning }
@@ -626,10 +641,22 @@ private fun ExplorerTabContent(
             scaleNotes = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.scaleNotes else emptySet(),
             scaleRoot = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.root else null,
             scalePositionFretRange = if (uiState.scaleOverlay.enabled) uiState.scaleOverlay.positionFretRange else null,
+            capoFret = uiState.capoFret,
+            lastFret = uiState.lastFret,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp, bottom = 16.dp),
         )
+
+        // Capo selector
+        CapoSelector(
+            capoFret = uiState.capoFret,
+            lastFret = uiState.lastFret,
+            onCapoChange = viewModel::setCapoFret,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Action buttons
         Row(
@@ -673,12 +700,14 @@ private fun ExplorerTabContent(
             val chordFound = uiState.detectionResult as com.baijum.ukufretboard.domain.ChordDetector.DetectionResult.ChordFound
             val chordResult = chordFound.result
             val formula = chordResult.matchedFormula
-            val inversion = if (fretsList.size == 4 && formula != null) {
-                ChordInfo.determineInversion(fretsList, chordResult.root.pitchClass, formula, currentTuning)
+            // Use capo-adjusted frets for inversion/bass calculation
+            val capoAdjustedFrets = fretsList.map { it + uiState.capoFret }
+            val inversion = if (capoAdjustedFrets.size == 4 && formula != null) {
+                ChordInfo.determineInversion(capoAdjustedFrets, chordResult.root.pitchClass, formula, currentTuning)
             } else null
             val invLabel = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) inversion.label else null
             val displayName = if (inversion != null && inversion != ChordInfo.Inversion.ROOT) {
-                val bassPc = ChordInfo.bassPitchClass(fretsList, currentTuning)
+                val bassPc = ChordInfo.bassPitchClass(capoAdjustedFrets, currentTuning)
                 ChordInfo.slashNotation(chordResult.name, inversion, bassPc)
             } else {
                 chordResult.name
@@ -694,6 +723,18 @@ private fun ExplorerTabContent(
             null
         }
 
+        // Build library navigation callback only when a chord with a known formula is found
+        val showInLibraryCallback: (() -> Unit)? = if (
+            onShowInLibrary != null &&
+            uiState.detectionResult is com.baijum.ukufretboard.domain.ChordDetector.DetectionResult.ChordFound
+        ) {
+            val chordFound = uiState.detectionResult as com.baijum.ukufretboard.domain.ChordDetector.DetectionResult.ChordFound
+            val formula = chordFound.result.matchedFormula
+            if (formula != null) {
+                { onShowInLibrary(chordFound.result.root.pitchClass, formula) }
+            } else null
+        } else null
+
         ChordResultView(
             detectionResult = uiState.detectionResult,
             fingerPositions = uiState.fingerPositions,
@@ -701,8 +742,69 @@ private fun ExplorerTabContent(
             soundEnabled = soundEnabled,
             frets = fretsList,
             tuning = currentTuning,
+            capoFret = uiState.capoFret,
             onShareChord = shareCallback,
+            onShowInLibrary = showInLibraryCallback,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/**
+ * Compact capo position selector with minus/plus buttons and a fret label.
+ *
+ * Displays "No capo" when fret is 0, otherwise shows "Capo: fret N".
+ */
+@Composable
+private fun CapoSelector(
+    capoFret: Int,
+    lastFret: Int = FretboardViewModel.LAST_FRET,
+    onCapoChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = "Capo",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        IconButton(
+            onClick = { onCapoChange((capoFret - 1).coerceAtLeast(0)) },
+            enabled = capoFret > 0,
+        ) {
+            Text(
+                text = "−",
+                style = MaterialTheme.typography.titleLarge,
+                color = if (capoFret > 0)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            )
+        }
+        Text(
+            text = if (capoFret == 0) "Off" else "$capoFret",
+            style = MaterialTheme.typography.titleMedium,
+            color = if (capoFret > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(32.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        IconButton(
+            onClick = { onCapoChange((capoFret + 1).coerceAtMost(lastFret)) },
+            enabled = capoFret < lastFret,
+        ) {
+            Text(
+                text = "+",
+                style = MaterialTheme.typography.titleLarge,
+                color = if (capoFret < lastFret)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            )
+        }
     }
 }
