@@ -238,6 +238,34 @@ class LearningProgressRepository(context: Context) {
         prefs.edit().clear().apply()
     }
 
+    /**
+     * Exports all learning progress as a map of SharedPreferences entries.
+     * Values are converted to strings for JSON serialization.
+     */
+    fun exportAll(): Map<String, String> {
+        return prefs.all.mapValues { (_, value) -> value.toString() }
+    }
+
+    /**
+     * Imports learning progress from a map of key-value pairs.
+     * Numeric values (Int) are detected and stored as integers;
+     * "true"/"false" strings are stored as booleans; all else as strings.
+     */
+    fun importAll(entries: Map<String, String>) {
+        val editor = prefs.edit()
+        for ((key, value) in entries) {
+            when {
+                value == "true" || value == "false" ->
+                    editor.putBoolean(key, value.toBoolean())
+                value.toIntOrNull() != null ->
+                    editor.putInt(key, value.toInt())
+                else ->
+                    editor.putString(key, value)
+            }
+        }
+        editor.apply()
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private fun incrementInt(key: String): Int {

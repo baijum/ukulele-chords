@@ -28,8 +28,8 @@ android {
         applicationId = "com.baijum.ukufretboard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 28
-        versionName = "4.12"
+        versionCode = 29
+        versionName = "5.0"
     }
 
     signingConfigs {
@@ -65,9 +65,6 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "META-INF/DEPENDENCIES"
-            excludes += "META-INF/INDEX.LIST"
-            excludes += "META-INF/MANIFEST.MF"
         }
     }
 }
@@ -85,11 +82,6 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
-    implementation(libs.play.services.auth)
-    implementation(libs.google.api.client.android)
-    implementation(libs.google.api.services.drive) {
-        exclude(group = "org.apache.httpcomponents")
-    }
     implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.ui.tooling)
 }

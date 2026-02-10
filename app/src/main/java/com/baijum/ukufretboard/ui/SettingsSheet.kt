@@ -36,7 +36,7 @@ import com.baijum.ukufretboard.data.UkuleleTuning
 /**
  * A modal bottom sheet displaying all app settings, organized by section.
  *
- * Contains Sound, Display, Tuning, Fretboard, and Google Drive Sync sections.
+ * Contains Sound, Display, Tuning, Fretboard, and Notification sections.
  *
  * @param soundSettings The current [SoundSettings] values to display.
  * @param onSoundSettingsChange Callback invoked when the user changes any sound setting.
@@ -46,7 +46,6 @@ import com.baijum.ukufretboard.data.UkuleleTuning
  * @param onTuningSettingsChange Callback invoked when the user changes any tuning setting.
  * @param fretboardSettings The current [FretboardSettings] values to display.
  * @param onFretboardSettingsChange Callback invoked when the user changes any fretboard setting.
- * @param syncViewModel The [SyncViewModel] for Google Drive sync, or null to hide the sync section.
  * @param onDismiss Callback invoked when the sheet is dismissed.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +61,7 @@ fun SettingsSheet(
     onFretboardSettingsChange: (FretboardSettings) -> Unit,
     notificationSettings: NotificationSettings = NotificationSettings(),
     onNotificationSettingsChange: (NotificationSettings) -> Unit = {},
-    syncViewModel: com.baijum.ukufretboard.viewmodel.SyncViewModel? = null,
+    backupRestoreViewModel: com.baijum.ukufretboard.viewmodel.BackupRestoreViewModel? = null,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -123,11 +122,11 @@ fun SettingsSheet(
                 onSettingsChange = onNotificationSettingsChange,
             )
 
-            // ── Google Drive Sync section ──
-            if (syncViewModel != null) {
+            // ── Backup & Restore section ──
+            if (backupRestoreViewModel != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider()
-                SyncSection(syncViewModel = syncViewModel)
+                BackupRestoreSection(viewModel = backupRestoreViewModel)
             }
 
             // ── About section ──

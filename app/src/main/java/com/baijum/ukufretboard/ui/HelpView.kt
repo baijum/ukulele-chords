@@ -227,8 +227,8 @@ private val HELP_SECTIONS = listOf(
                 title = "Settings",
                 description = "Configure app-wide preferences: enable or disable sound " +
                     "playback, adjust display options, change tuning, switch to " +
-                    "left-handed fretboard orientation, manage notifications, and set up " +
-                    "Google Drive sync for backing up your data.",
+                    "left-handed fretboard orientation, manage notifications, and " +
+                    "back up or restore your data to a local file.",
             ),
             HelpEntry(
                 title = "Sharing Chords",

@@ -100,6 +100,35 @@ class ProgressRepository(context: Context) {
         return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
     }
 
+    /**
+     * Exports chord progress data for backup.
+     */
+    fun exportData(): Triple<Set<String>, Int, String?> {
+        return Triple(
+            getLearnedChords(),
+            prefs.getInt(KEY_DAILY_STREAK, 0),
+            prefs.getString(KEY_LAST_PRACTICE_DATE, null),
+        )
+    }
+
+    /**
+     * Imports chord progress from backup. Merges learned chords (union)
+     * and takes the higher streak.
+     */
+    fun importData(learnedChords: Set<String>, dailyStreak: Int, lastPracticeDate: String?) {
+        val current = getLearnedChords().toMutableSet()
+        current.addAll(learnedChords)
+        val editor = prefs.edit()
+            .putStringSet(KEY_LEARNED_CHORDS, current)
+        if (dailyStreak > prefs.getInt(KEY_DAILY_STREAK, 0)) {
+            editor.putInt(KEY_DAILY_STREAK, dailyStreak)
+        }
+        if (lastPracticeDate != null) {
+            editor.putString(KEY_LAST_PRACTICE_DATE, lastPracticeDate)
+        }
+        editor.apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "learning_progress"
         private const val KEY_LEARNED_CHORDS = "learned_chords"

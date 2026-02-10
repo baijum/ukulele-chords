@@ -67,7 +67,7 @@ import com.baijum.ukufretboard.viewmodel.FavoritesViewModel
 import com.baijum.ukufretboard.viewmodel.FretboardViewModel
 import com.baijum.ukufretboard.viewmodel.SettingsViewModel
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
-import com.baijum.ukufretboard.viewmodel.SyncViewModel
+import com.baijum.ukufretboard.viewmodel.BackupRestoreViewModel
 import com.baijum.ukufretboard.viewmodel.TunerViewModel
 import com.baijum.ukufretboard.viewmodel.PitchMonitorViewModel
 import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
@@ -171,7 +171,7 @@ fun FretboardScreen(
     settingsViewModel: SettingsViewModel = viewModel(),
     favoritesViewModel: FavoritesViewModel = viewModel(),
     songbookViewModel: SongbookViewModel = viewModel(),
-    syncViewModel: SyncViewModel = viewModel(),
+    backupRestoreViewModel: BackupRestoreViewModel = viewModel(),
     customProgressionViewModel: CustomProgressionViewModel = viewModel(),
     progressViewModel: com.baijum.ukufretboard.viewmodel.ProgressViewModel = viewModel(),
     tunerViewModel: TunerViewModel = viewModel(),
@@ -183,9 +183,9 @@ fun FretboardScreen(
     var showFullScreen by rememberSaveable { mutableStateOf(false) }
     var shareChordInfo by remember { mutableStateOf<ShareChordInfo?>(null) }
 
-    // Initialize SyncViewModel with SettingsViewModel reference
+    // Initialize BackupRestoreViewModel with SettingsViewModel reference
     LaunchedEffect(Unit) {
-        syncViewModel.init(settingsViewModel)
+        backupRestoreViewModel.init(settingsViewModel)
     }
 
     // Initialize sampled audio engine (loads OGG samples into SoundPool)
@@ -525,7 +525,7 @@ fun FretboardScreen(
                     com.baijum.ukufretboard.widget.ChordOfDayNotificationWorker.cancel(context)
                 }
             },
-            syncViewModel = syncViewModel,
+            backupRestoreViewModel = backupRestoreViewModel,
             onDismiss = { showSettings = false },
         )
     }

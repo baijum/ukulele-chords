@@ -135,6 +135,20 @@ class FavoritesRepository(context: Context) {
         editor.apply()
     }
 
+    /**
+     * Merges the given list of folders into local storage.
+     * Only adds folders that are not already present.
+     */
+    fun importFolders(folders: List<FavoriteFolder>) {
+        val editor = folderPrefs.edit()
+        for (folder in folders) {
+            if (!folderPrefs.contains(folder.id)) {
+                editor.putString(folder.id, serializeFolder(folder))
+            }
+        }
+        editor.apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "chord_favorites"
         private const val FOLDER_PREFS_NAME = "favorite_folders"

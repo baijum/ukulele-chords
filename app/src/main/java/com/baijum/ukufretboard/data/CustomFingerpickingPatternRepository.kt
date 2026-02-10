@@ -100,6 +100,20 @@ class CustomFingerpickingPatternRepository(context: Context) {
         }
     }
 
+    /**
+     * Merges the given list of patterns into local storage.
+     * Only adds entries that are not already present (by ID).
+     */
+    fun importAll(items: List<CustomFingerpickingPattern>) {
+        val editor = prefs.edit()
+        for (item in items) {
+            if (!prefs.contains(item.id)) {
+                editor.putString(item.id, serialize(item))
+            }
+        }
+        editor.apply()
+    }
+
     companion object {
         private const val PREFS_NAME = "custom_fingerpicking_patterns"
     }
