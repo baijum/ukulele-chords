@@ -3,6 +3,7 @@
 /local.properties
 /.idea
 .vscode
+.cursor/
 .DS_Store
 /build
 /app/build
@@ -12,3 +13,4 @@
 /keystore.properties
 *.jks
 .kotlin/
+docs/manual/ukulele-companion-manual.pdf
