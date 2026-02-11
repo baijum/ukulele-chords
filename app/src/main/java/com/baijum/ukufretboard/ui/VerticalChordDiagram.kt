@@ -38,8 +38,8 @@ import com.baijum.ukufretboard.domain.ChordVoicing
 /** Number of strings on a ukulele. */
 private const val STRING_COUNT = 4
 
-/** Minimum number of fret rows so the diagram doesn't look too small. */
-private const val MIN_FRET_ROWS = 4
+/** Minimum number of fret rows to match the standard chord diagram convention. */
+private const val MIN_FRET_ROWS = 5
 
 /** Spacing between adjacent strings (horizontal distance). */
 private val STRING_SPACING = 26.dp
@@ -151,7 +151,7 @@ fun VerticalChordDiagram(
 
                 // Note names below (show sounding notes if capo is active)
                 Text(
-                    text = soundingNotes ?: voicing.notes.joinToString(" ") { it.name },
+                    text = soundingNotes ?: voicing.notes.joinToString(" ") { it?.name ?: "x" },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (soundingNotes != null)
                         MaterialTheme.colorScheme.primary
@@ -315,38 +315,59 @@ private fun VerticalChordCanvas(
             }
         }
 
-        // ── 6. Open string circles and fretted dots ──
+        // ── 6. Open string circles, muted "x" marks, and fretted dots ──
         voicing.frets.forEachIndexed { stringIndex, fret ->
             val x = stringX(stringIndex)
 
-            if (fret == 0) {
-                // Open string circle above the grid
-                val circleColor = if (commonToneIndices?.contains(stringIndex) == true) {
-                    commonToneColor
-                } else {
-                    openColor
+            when {
+                fret == ChordVoicing.MUTED -> {
+                    // Muted string: draw "X" above the grid
+                    val centerY = openAreaPx / 2
+                    val xSize = openRadiusPx * 0.7f
+                    val strokeW = 1.5.dp.toPx()
+                    drawLine(
+                        color = openColor,
+                        start = Offset(x - xSize, centerY - xSize),
+                        end = Offset(x + xSize, centerY + xSize),
+                        strokeWidth = strokeW,
+                    )
+                    drawLine(
+                        color = openColor,
+                        start = Offset(x - xSize, centerY + xSize),
+                        end = Offset(x + xSize, centerY - xSize),
+                        strokeWidth = strokeW,
+                    )
                 }
-                drawCircle(
-                    color = circleColor,
-                    radius = openRadiusPx,
-                    center = Offset(x, openAreaPx / 2),
-                    style = Stroke(width = 1.5.dp.toPx()),
-                )
-            } else if (capoFret == null || fret != capoFret) {
-                // Fretted dot (skip if capo occupies this fret)
-                val y = dotY(fret)
-                val isCommon = commonToneIndices?.contains(stringIndex) == true
-                val isBass = bassStringIndex == stringIndex
-                val fillColor = when {
-                    isCommon -> commonToneColor
-                    isBass -> bassDotColor
-                    else -> dotColor
+                fret == 0 -> {
+                    // Open string circle above the grid
+                    val circleColor = if (commonToneIndices?.contains(stringIndex) == true) {
+                        commonToneColor
+                    } else {
+                        openColor
+                    }
+                    drawCircle(
+                        color = circleColor,
+                        radius = openRadiusPx,
+                        center = Offset(x, openAreaPx / 2),
+                        style = Stroke(width = 1.5.dp.toPx()),
+                    )
                 }
-                drawCircle(
-                    color = fillColor,
-                    radius = dotRadiusPx,
-                    center = Offset(x, y),
-                )
+                capoFret == null || fret != capoFret -> {
+                    // Fretted dot (skip if capo occupies this fret)
+                    val y = dotY(fret)
+                    val isCommon = commonToneIndices?.contains(stringIndex) == true
+                    val isBass = bassStringIndex == stringIndex
+                    val fillColor = when {
+                        isCommon -> commonToneColor
+                        isBass -> bassDotColor
+                        else -> dotColor
+                    }
+                    drawCircle(
+                        color = fillColor,
+                        radius = dotRadiusPx,
+                        center = Offset(x, y),
+                    )
+                }
             }
         }
 

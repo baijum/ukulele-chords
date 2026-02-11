@@ -70,8 +70,11 @@ fun CapoVisualizerView(
 
     // Compute sounding note names for each string
     val soundingNoteNames = voicing.frets.mapIndexed { i, fret ->
-        val pc = (tuning[i].openPitchClass + fret + capoFret) % Notes.PITCH_CLASS_COUNT
-        Notes.pitchClassToName(pc)
+        if (fret == ChordVoicing.MUTED) "x"
+        else {
+            val pc = (tuning[i].openPitchClass + fret + capoFret) % Notes.PITCH_CLASS_COUNT
+            Notes.pitchClassToName(pc)
+        }
     }.joinToString(" ")
 
     Column(

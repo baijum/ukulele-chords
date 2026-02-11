@@ -40,6 +40,9 @@ class ChordLibraryViewModel : ViewModel() {
     /** The tuning used for voicing generation. */
     private val tuning = FretboardViewModel.STANDARD_TUNING
 
+    /** Whether the voicing generator may include voicings with muted strings. */
+    private var allowMutedStrings: Boolean = false
+
     private val _uiState = MutableStateFlow(
         ChordLibraryUiState().let { initial ->
             // Auto-select the first formula in the default category
@@ -131,12 +134,28 @@ class ChordLibraryViewModel : ViewModel() {
         return "$rootName$symbol"
     }
 
+    /**
+     * Updates the muted-string setting and regenerates voicings if the value changed.
+     *
+     * Called from the UI layer when the "Allow Muted Strings" setting changes.
+     */
+    fun setAllowMutedStrings(allowed: Boolean) {
+        if (allowMutedStrings == allowed) return
+        allowMutedStrings = allowed
+        _uiState.update { current ->
+            current.copy(
+                voicings = generateVoicings(current.selectedRoot, current.selectedFormula),
+            )
+        }
+    }
+
     private fun generateVoicings(rootPitchClass: Int, formula: ChordFormula?): List<ChordVoicing> {
         if (formula == null) return emptyList()
         return VoicingGenerator.generate(
             rootPitchClass = rootPitchClass,
             formula = formula,
             tuning = tuning,
+            allowMutedStrings = allowMutedStrings,
         )
     }
 }

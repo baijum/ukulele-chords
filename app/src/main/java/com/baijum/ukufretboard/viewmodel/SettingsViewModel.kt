@@ -132,6 +132,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             .putBoolean(KEY_LEFT_HANDED, s.fretboard.leftHanded)
             .putInt(KEY_LAST_FRET, s.fretboard.lastFret)
             .putBoolean(KEY_SHOW_NOTE_NAMES, s.fretboard.showNoteNames)
+            .putBoolean(KEY_ALLOW_MUTED_STRINGS, s.fretboard.allowMutedStrings)
             // Notification
             .putBoolean(KEY_CHORD_OF_DAY_ENABLED, s.notification.chordOfDayEnabled)
             // Scale Practice
@@ -174,6 +175,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 leftHanded = prefs.getBoolean(KEY_LEFT_HANDED, false),
                 lastFret = prefs.getInt(KEY_LAST_FRET, FretboardSettings.DEFAULT_LAST_FRET),
                 showNoteNames = prefs.getBoolean(KEY_SHOW_NOTE_NAMES, true),
+                allowMutedStrings = prefs.getBoolean(KEY_ALLOW_MUTED_STRINGS, false),
             ),
             notification = NotificationSettings(
                 chordOfDayEnabled = prefs.getBoolean(KEY_CHORD_OF_DAY_ENABLED, false),
@@ -202,6 +204,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_LEFT_HANDED = "left_handed"
         private const val KEY_LAST_FRET = "last_fret"
         private const val KEY_SHOW_NOTE_NAMES = "show_note_names"
+        private const val KEY_ALLOW_MUTED_STRINGS = "allow_muted_strings"
         private const val KEY_CHORD_OF_DAY_ENABLED = "chord_of_day_enabled"
         private const val KEY_SCALE_PRACTICE_ROOT = "scale_practice_root"
         private const val KEY_SCALE_PRACTICE_SCALE = "scale_practice_scale"

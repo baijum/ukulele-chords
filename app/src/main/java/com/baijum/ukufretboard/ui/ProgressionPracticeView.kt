@@ -130,8 +130,11 @@ fun ProgressionPracticeView(
         .coerceIn(0, (currentVoicingCount - 1).coerceAtLeast(0))
 
     // Build selections map for FretboardView from the current voicing
+    // Muted strings (MUTED = -1) map to null (unplayed)
     val selections: Map<Int, Int?> = if (currentVoicing != null) {
-        currentVoicing.frets.mapIndexed { stringIdx, fret -> stringIdx to fret as Int? }.toMap()
+        currentVoicing.frets.mapIndexed { stringIdx, fret ->
+            stringIdx to (if (fret == ChordVoicing.MUTED) null else fret)
+        }.toMap()
     } else {
         tuning.indices.associateWith { null }
     }

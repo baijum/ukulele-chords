@@ -273,6 +273,11 @@ fun FretboardScreen(
         fretboardViewModel.setLastFret(appSettings.fretboard.lastFret)
     }
 
+    // Sync muted strings setting with chord library
+    LaunchedEffect(appSettings.fretboard.allowMutedStrings) {
+        libraryViewModel.setAllowMutedStrings(appSettings.fretboard.allowMutedStrings)
+    }
+
     // Sync show-note-names setting
     LaunchedEffect(appSettings.fretboard.showNoteNames) {
         fretboardViewModel.setShowNoteNames(appSettings.fretboard.showNoteNames)

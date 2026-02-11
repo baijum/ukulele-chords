@@ -106,11 +106,15 @@ data class TuningSettings(
  *   so the nut appears on the right (matching a left-handed player's view).
  * @property lastFret The highest fret shown on the fretboard (12–22, default 12).
  * @property showNoteNames When true, note names are displayed on fretboard cells.
+ * @property allowMutedStrings When true, the chord library may include voicings
+ *   where one string is muted (not played). Disabled by default since standard
+ *   ukulele playing uses all 4 strings for most chords.
  */
 data class FretboardSettings(
     val leftHanded: Boolean = false,
     val lastFret: Int = DEFAULT_LAST_FRET,
     val showNoteNames: Boolean = true,
+    val allowMutedStrings: Boolean = false,
 ) {
     companion object {
         const val MIN_LAST_FRET = 12

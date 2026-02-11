@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.ukufretboard.domain.ChordVoicing
 
-/** Minimum number of fret columns so diagrams don't look too narrow. */
-private const val MIN_FRET_COLUMNS = 3
+/** Minimum number of fret columns to match the standard chord diagram convention. */
+private const val MIN_FRET_COLUMNS = 5
 
 /** Width of each fret column in the diagram. */
 private val FRET_COL_WIDTH = 24.dp
@@ -136,7 +136,7 @@ fun ChordDiagramPreview(
 
             // Note names below (show sounding notes if capo is active)
             Text(
-                text = soundingNotes ?: voicing.notes.joinToString(" ") { it.name },
+                text = soundingNotes ?: voicing.notes.joinToString(" ") { it?.name ?: "x" },
                 style = MaterialTheme.typography.labelSmall,
                 color = if (soundingNotes != null)
                     MaterialTheme.colorScheme.primary
@@ -228,7 +228,31 @@ private fun DiagramBody(
                         .height(STRING_ROW_HEIGHT),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (fret == 0) {
+                    if (fret == ChordVoicing.MUTED) {
+                        // Muted string: draw "X" indicator
+                        Box(
+                            modifier = Modifier
+                                .size(OPEN_CIRCLE_SIZE)
+                                .drawBehind {
+                                    val half = size.minDimension / 2 * 0.7f
+                                    val cx = size.width / 2
+                                    val cy = size.height / 2
+                                    val strokeW = 1.5.dp.toPx()
+                                    drawLine(
+                                        color = openColor,
+                                        start = Offset(cx - half, cy - half),
+                                        end = Offset(cx + half, cy + half),
+                                        strokeWidth = strokeW,
+                                    )
+                                    drawLine(
+                                        color = openColor,
+                                        start = Offset(cx - half, cy + half),
+                                        end = Offset(cx + half, cy - half),
+                                        strokeWidth = strokeW,
+                                    )
+                                },
+                        )
+                    } else if (fret == 0) {
                         // Open string circle — highlighted for common tones
                         val isCommonOpen = commonToneIndices?.contains(stringIndex) == true
                         Box(

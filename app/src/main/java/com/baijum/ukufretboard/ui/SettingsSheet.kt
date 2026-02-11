@@ -357,6 +357,12 @@ private fun FretboardSection(
         onCheckedChange = { onSettingsChange(settings.copy(showNoteNames = it)) },
     )
 
+    SettingsSwitch(
+        label = "Allow Muted Strings",
+        checked = settings.allowMutedStrings,
+        onCheckedChange = { onSettingsChange(settings.copy(allowMutedStrings = it)) },
+    )
+
     Spacer(modifier = Modifier.height(8.dp))
 
     SettingsSlider(

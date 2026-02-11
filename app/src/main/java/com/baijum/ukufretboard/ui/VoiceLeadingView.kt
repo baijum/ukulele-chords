@@ -416,12 +416,14 @@ private fun TransitionSummaryCard(
                 val movement = transition.movements[i]
                 val isCommon = i in transition.commonToneIndices
 
-                val fromNoteName = Notes.pitchClassToName(
-                    (string.openPitchClass + fromFret) % Notes.PITCH_CLASS_COUNT
-                )
-                val toNoteName = Notes.pitchClassToName(
-                    (string.openPitchClass + toFret) % Notes.PITCH_CLASS_COUNT
-                )
+                val fromNoteName = if (fromFret == ChordVoicing.MUTED) "x"
+                    else Notes.pitchClassToName(
+                        (string.openPitchClass + fromFret) % Notes.PITCH_CLASS_COUNT
+                    )
+                val toNoteName = if (toFret == ChordVoicing.MUTED) "x"
+                    else Notes.pitchClassToName(
+                        (string.openPitchClass + toFret) % Notes.PITCH_CLASS_COUNT
+                    )
 
                 Row(
                     modifier = Modifier
@@ -448,7 +450,11 @@ private fun TransitionSummaryCard(
                                 ),
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        val fretLabel = if (fromFret == 0) "open" else "fret $fromFret"
+                        val fretLabel = when (fromFret) {
+                            ChordVoicing.MUTED -> "muted"
+                            0 -> "open"
+                            else -> "fret $fromFret"
+                        }
                         Text(
                             text = "stays on $fretLabel ($fromNoteName)",
                             style = MaterialTheme.typography.bodySmall,
@@ -456,8 +462,16 @@ private fun TransitionSummaryCard(
                         )
                     } else {
                         // Moving finger
-                        val fromLabel = if (fromFret == 0) "open" else "fret $fromFret"
-                        val toLabel = if (toFret == 0) "open" else "fret $toFret"
+                        val fromLabel = when (fromFret) {
+                            ChordVoicing.MUTED -> "muted"
+                            0 -> "open"
+                            else -> "fret $fromFret"
+                        }
+                        val toLabel = when (toFret) {
+                            ChordVoicing.MUTED -> "muted"
+                            0 -> "open"
+                            else -> "fret $toFret"
+                        }
                         val arrow = when {
                             movement > 0 -> "\u2191$movement"  // ↑
                             movement < 0 -> "\u2193${-movement}" // ↓

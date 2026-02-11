@@ -30,6 +30,12 @@ object VoicingGenerator {
     /** The highest fret to consider on the ukulele. */
     private const val LAST_FRET = 12
 
+    /** Maximum number of muted strings allowed per voicing. */
+    private const val MAX_MUTED_STRINGS = 1
+
+    /** Maximum number of muted-string voicings to return (appended after full voicings). */
+    private const val MAX_MUTED_VOICINGS = 5
+
     /**
      * Generates playable voicings for a chord defined by [rootPitchClass] and [formula],
      * using the given [tuning].
@@ -37,13 +43,17 @@ object VoicingGenerator {
      * @param rootPitchClass The pitch class (0–11) of the chord's root note.
      * @param formula The [ChordFormula] defining the chord's interval structure.
      * @param tuning The ukulele string tuning to generate voicings for.
+     * @param allowMutedStrings When true, voicings with up to [MAX_MUTED_STRINGS]
+     *   muted string(s) are included. Muted voicings are always sorted after full
+     *   voicings. Defaults to false (all strings must be played).
      * @return A list of [ChordVoicing]s sorted by playability (lower positions first,
-     *   smaller spans preferred, more open strings preferred).
+     *   smaller spans preferred, more open strings preferred, fewer muted strings preferred).
      */
     fun generate(
         rootPitchClass: Int,
         formula: ChordFormula,
         tuning: List<UkuleleString>,
+        allowMutedStrings: Boolean = false,
     ): List<ChordVoicing> {
         val stringCount = tuning.size
 
@@ -76,20 +86,39 @@ object VoicingGenerator {
                 }
             }
 
-            // Skip if any string has no valid frets (shouldn't happen, but be safe)
-            if (fretsPerString.any { it.isEmpty() }) continue
+            // When muted strings are not allowed, skip if any string has no valid frets
+            if (!allowMutedStrings && fretsPerString.any { it.isEmpty() }) continue
+
+            // When muted strings are allowed, add MUTED as an option for each string
+            // (including strings that have valid frets, to support intentional 3-string voicings)
+            val fretsWithMuteOption = if (allowMutedStrings) {
+                fretsPerString.map { frets ->
+                    if (frets.isEmpty()) listOf(ChordVoicing.MUTED)
+                    else frets + ChordVoicing.MUTED
+                }
+            } else {
+                fretsPerString
+            }
 
             // Cartesian product of valid frets across all strings
-            cartesianProduct(fretsPerString) { combination ->
+            cartesianProduct(fretsWithMuteOption) { combination ->
                 if (combination in results) return@cartesianProduct
 
-                // Check that all required pitch classes are covered
+                val mutedCount = combination.count { it == ChordVoicing.MUTED }
+
+                // Enforce muted string limits
+                if (!allowMutedStrings && mutedCount > 0) return@cartesianProduct
+                if (mutedCount > MAX_MUTED_STRINGS) return@cartesianProduct
+
+                // Check that all required pitch classes are covered by non-muted strings
                 val producedPCs = combination.mapIndexedTo(mutableSetOf()) { i, fret ->
+                    if (fret == ChordVoicing.MUTED) return@mapIndexedTo -1 // sentinel, won't match
                     (tuning[i].openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
                 }
+                producedPCs.remove(-1)
                 if (!producedPCs.containsAll(requiredPCs)) return@cartesianProduct
 
-                // Check playability: fret span of fretted (non-open) positions
+                // Check playability: fret span of fretted (non-open, non-muted) positions
                 val frettedPositions = combination.filter { it > 0 }
                 if (frettedPositions.isNotEmpty()) {
                     val span = frettedPositions.max() - frettedPositions.min()
@@ -100,7 +129,26 @@ object VoicingGenerator {
             }
         }
 
-        // Convert to ChordVoicing objects and sort
+        // Convert to ChordVoicing objects and sort.
+        // When muted strings are allowed, use separate pools so muted voicings
+        // are guaranteed to appear (they'd otherwise be cut off by MAX_VOICINGS
+        // since the comparator sorts them last).
+        if (allowMutedStrings) {
+            val fullFrets = results.filter { frets -> frets.none { it == ChordVoicing.MUTED } }
+            val mutedFrets = results.filter { frets -> frets.any { it == ChordVoicing.MUTED } }
+
+            val sortedFull = fullFrets
+                .map { frets -> toVoicing(frets, tuning) }
+                .sortedWith(voicingComparator())
+                .take(MAX_VOICINGS)
+            val sortedMuted = mutedFrets
+                .map { frets -> toVoicing(frets, tuning) }
+                .sortedWith(voicingComparator())
+                .take(MAX_MUTED_VOICINGS)
+
+            return sortedFull + sortedMuted
+        }
+
         return results
             .map { frets -> toVoicing(frets, tuning) }
             .sortedWith(voicingComparator())
@@ -177,14 +225,18 @@ object VoicingGenerator {
 
     /**
      * Converts a fret pattern to a [ChordVoicing] with computed notes and fret range.
+     * Muted strings ([ChordVoicing.MUTED]) produce null notes.
      */
     private fun toVoicing(
         frets: List<Int>,
         tuning: List<UkuleleString>,
     ): ChordVoicing {
         val notes = frets.mapIndexed { i, fret ->
-            val pc = (tuning[i].openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
-            Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
+            if (fret == ChordVoicing.MUTED) null
+            else {
+                val pc = (tuning[i].openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
+                Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
+            }
         }
         val frettedPositions = frets.filter { it > 0 }
         return ChordVoicing(
@@ -197,12 +249,14 @@ object VoicingGenerator {
 
     /**
      * Comparator that sorts voicings by playability:
-     * 1. Lower position (minFret) first
-     * 2. Smaller fret span preferred
-     * 3. More open strings preferred (easier to play)
+     * 1. Fewer muted strings first (full voicings before partial)
+     * 2. Lower position (minFret) first
+     * 3. Smaller fret span preferred
+     * 4. More open strings preferred (easier to play)
      */
     private fun voicingComparator(): Comparator<ChordVoicing> =
-        compareBy<ChordVoicing> { it.minFret }
+        compareBy<ChordVoicing> { voicing -> voicing.frets.count { it == ChordVoicing.MUTED } }
+            .thenBy { it.minFret }
             .thenBy { it.maxFret - it.minFret }
             .thenByDescending { voicing -> voicing.frets.count { it == 0 } }
 }

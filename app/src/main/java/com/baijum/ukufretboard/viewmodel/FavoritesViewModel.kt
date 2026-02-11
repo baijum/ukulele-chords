@@ -118,8 +118,11 @@ class FavoritesViewModel(application: Application) : AndroidViewModel(applicatio
     fun toChordVoicing(favorite: FavoriteVoicing): ChordVoicing {
         val tuning = FretboardViewModel.STANDARD_TUNING
         val notes = favorite.frets.mapIndexed { i, fret ->
-            val pc = (tuning[i].openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
-            Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
+            if (fret == ChordVoicing.MUTED) null
+            else {
+                val pc = (tuning[i].openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
+                Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
+            }
         }
         val frettedPositions = favorite.frets.filter { it > 0 }
         return ChordVoicing(

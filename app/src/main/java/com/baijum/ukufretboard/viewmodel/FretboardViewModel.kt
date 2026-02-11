@@ -507,7 +507,8 @@ class FretboardViewModel : ViewModel() {
     fun playVoicing(voicing: com.baijum.ukufretboard.domain.ChordVoicing) {
         if (!soundSettings.enabled) return
 
-        val notes = voicing.frets.mapIndexed { index, fret ->
+        val notes = voicing.frets.mapIndexedNotNull { index, fret ->
+            if (fret == com.baijum.ukufretboard.domain.ChordVoicing.MUTED) return@mapIndexedNotNull null
             val string = tuning[index]
             val pitchClass = (string.openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
             val octave = computeOctave(string.openPitchClass, string.octave, fret)
@@ -541,7 +542,8 @@ class FretboardViewModel : ViewModel() {
 
         viewModelScope.launch {
             voicings.forEach { voicing ->
-                val notes = voicing.frets.mapIndexed { index, fret ->
+                val notes = voicing.frets.mapIndexedNotNull { index, fret ->
+                    if (fret == com.baijum.ukufretboard.domain.ChordVoicing.MUTED) return@mapIndexedNotNull null
                     val string = tuning[index]
                     val pitchClass = (string.openPitchClass + fret) % Notes.PITCH_CLASS_COUNT
                     val octave = computeOctave(string.openPitchClass, string.octave, fret)

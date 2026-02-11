@@ -2,6 +2,7 @@ package com.baijum.ukufretboard.domain
 
 import com.baijum.ukufretboard.data.ChordFormula
 import com.baijum.ukufretboard.data.Notes
+import com.baijum.ukufretboard.domain.ChordVoicing
 import com.baijum.ukufretboard.viewmodel.UkuleleString
 
 /**
@@ -133,7 +134,10 @@ object ChordInfo {
         }
 
         return frets.map { fret ->
-            if (fret == 0) 0 else fretToFinger[fret] ?: 1
+            when {
+                fret <= 0 -> 0 // open (0) or muted (-1) — no finger
+                else -> fretToFinger[fret] ?: 1
+            }
         }
     }
 
@@ -211,7 +215,9 @@ object ChordInfo {
      * @return The string index (0–3) of the bass note.
      */
     fun findBassStringIndex(frets: List<Int>, tuning: List<UkuleleString>): Int {
-        return frets.indices.minByOrNull { i ->
+        // Exclude muted strings (MUTED = -1) from bass note consideration
+        val playedIndices = frets.indices.filter { frets[it] != ChordVoicing.MUTED }
+        return playedIndices.minByOrNull { i ->
             val string = tuning[i]
             string.octave * Notes.PITCH_CLASS_COUNT + string.openPitchClass + frets[i]
         } ?: 0

@@ -29,8 +29,8 @@ import com.baijum.ukufretboard.domain.ChordVoicing
 /** Number of strings on a ukulele. */
 private const val STRING_COUNT = 4
 
-/** Minimum number of fret rows to display so the diagram doesn't look too small. */
-private const val MIN_FRET_ROWS = 4
+/** Minimum number of fret rows to match the standard chord diagram convention. */
+private const val MIN_FRET_ROWS = 5
 
 /** Color used for the fretted-position dots (green matching the reference). */
 private val DOT_COLOR = Color(0xFF2E7D32)
@@ -84,8 +84,11 @@ fun ShareableChordCard(
 
     // Compute per-string note names from tuning + fret positions
     val perStringNotes = voicing.frets.mapIndexed { index, fret ->
-        val pitchClass = (STANDARD_OPEN_PITCH_CLASSES[index] + fret) % PITCH_CLASS_COUNT
-        Notes.pitchClassToName(pitchClass)
+        if (fret == ChordVoicing.MUTED) "x"
+        else {
+            val pitchClass = (STANDARD_OPEN_PITCH_CLASSES[index] + fret) % PITCH_CLASS_COUNT
+            Notes.pitchClassToName(pitchClass)
+        }
     }
 
     Column(
@@ -217,38 +220,58 @@ private fun ShareableChordCanvas(
             )
         }
 
-        // Draw open string circles and fretted dots
+        // Draw open string circles, muted "x" marks, and fretted dots
         voicing.frets.forEachIndexed { stringIndex, fret ->
             val x = stringXPositions[stringIndex]
 
-            if (fret == 0) {
-                // Open string circle above the nut
-                drawCircle(
-                    color = Color.Black,
-                    radius = openRadiusPx,
-                    center = Offset(x, openAreaPx / 2),
-                    style = Stroke(width = 2f),
-                )
-            } else {
-                // Fretted position: draw filled dot with finger number
-                val relFret = fret - startFret
-                val y = if (isAtNut) {
-                    gridTop + (relFret - 0.5f) * fretSpacePx
-                } else {
-                    gridTop + (relFret + 0.5f) * fretSpacePx
+            when {
+                fret == ChordVoicing.MUTED -> {
+                    // Muted string: draw "X" above the grid
+                    val centerY = openAreaPx / 2
+                    val xSize = openRadiusPx * 0.7f
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(x - xSize, centerY - xSize),
+                        end = Offset(x + xSize, centerY + xSize),
+                        strokeWidth = 2f,
+                    )
+                    drawLine(
+                        color = Color.Black,
+                        start = Offset(x - xSize, centerY + xSize),
+                        end = Offset(x + xSize, centerY - xSize),
+                        strokeWidth = 2f,
+                    )
                 }
+                fret == 0 -> {
+                    // Open string circle above the nut
+                    drawCircle(
+                        color = Color.Black,
+                        radius = openRadiusPx,
+                        center = Offset(x, openAreaPx / 2),
+                        style = Stroke(width = 2f),
+                    )
+                }
+                else -> {
+                    // Fretted position: draw filled dot with finger number
+                    val relFret = fret - startFret
+                    val y = if (isAtNut) {
+                        gridTop + (relFret - 0.5f) * fretSpacePx
+                    } else {
+                        gridTop + (relFret + 0.5f) * fretSpacePx
+                    }
 
-                // Green filled dot
-                drawCircle(
-                    color = DOT_COLOR,
-                    radius = dotRadiusPx,
-                    center = Offset(x, y),
-                )
+                    // Green filled dot
+                    drawCircle(
+                        color = DOT_COLOR,
+                        radius = dotRadiusPx,
+                        center = Offset(x, y),
+                    )
 
-                // White finger number inside the dot
-                val finger = fingering[stringIndex]
-                if (finger > 0) {
-                    drawFingerNumber(x, y, finger, dotRadiusPx)
+                    // White finger number inside the dot
+                    val finger = fingering[stringIndex]
+                    if (finger > 0) {
+                        drawFingerNumber(x, y, finger, dotRadiusPx)
+                    }
                 }
             }
         }
@@ -291,10 +314,12 @@ private fun ShareableChordCanvas(
             }
 
             stringXPositions.forEachIndexed { index, x ->
-                // Note name (e.g., "G", "C", "E", "C")
+                // Note name (e.g., "G", "C", "E", "C") or "x" for muted
                 drawText(perStringNotes[index], x, noteNameY, notePaint)
-                // Fret number (e.g., "0", "0", "0", "3")
-                drawText("${voicing.frets[index]}", x, fretNumberY, fretPaint)
+                // Fret number (e.g., "0", "0", "0", "3") or "x" for muted
+                val fretLabel = if (voicing.frets[index] == ChordVoicing.MUTED) "x"
+                    else "${voicing.frets[index]}"
+                drawText(fretLabel, x, fretNumberY, fretPaint)
             }
         }
     }

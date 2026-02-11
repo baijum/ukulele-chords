@@ -50,15 +50,25 @@ data class ChordResult(
  * fretboard. Each voicing specifies the exact fret for each of the 4 strings.
  *
  * @property frets A list of 4 fret numbers, one per string (G, C, E, A in order).
- *   All values are 0–12; every string is always played (ukulele rarely mutes strings).
+ *   Values are [MUTED] (-1) for a muted/unplayed string, 0 for open, or 1–12 for fretted.
+ *   Muted-string voicings are only generated when the user enables the
+ *   "Allow Muted Strings" setting.
  * @property notes The [Note] produced at each string position, in string order.
+ *   Null for muted strings (fret == [MUTED]).
  * @property minFret The lowest fretted (non-open) position, or 0 if all strings are open.
+ *   Muted strings are excluded from this calculation.
  *   Used to determine the diagram display range.
  * @property maxFret The highest fret used in this voicing.
+ *   Muted strings are excluded from this calculation.
  */
 data class ChordVoicing(
     val frets: List<Int>,
-    val notes: List<Note>,
+    val notes: List<Note?>,
     val minFret: Int,
     val maxFret: Int,
-)
+) {
+    companion object {
+        /** Sentinel fret value indicating a muted (unplayed) string. */
+        const val MUTED = -1
+    }
+}
