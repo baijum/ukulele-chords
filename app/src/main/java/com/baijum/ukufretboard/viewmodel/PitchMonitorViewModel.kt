@@ -121,6 +121,16 @@ class PitchMonitorViewModel : ViewModel() {
 
     /**
      * Stops listening and releases the microphone.
+     *
+     * Internal processing state ([recentFrequencies], [lastChordName], etc.)
+     * is deliberately **not** cleared here because [processBuffer] may still
+     * be executing on a background thread ([kotlinx.coroutines.Dispatchers.Default]).
+     * Clearing a non-thread-safe [ArrayDeque] from the main thread while the
+     * background thread iterates it causes a [ConcurrentModificationException]
+     * (or [IndexOutOfBoundsException]) that crashes the Activity.
+     *
+     * The internal state is reset in [startListening] instead, before any
+     * new background work begins.
      */
     fun stopListening() {
         AudioCaptureEngine.stop()
@@ -132,10 +142,6 @@ class PitchMonitorViewModel : ViewModel() {
                 chordConfidence = 0f,
             )
         }
-        recentFrequencies.clear()
-        lastChordName = null
-        chordHoldCount = 0
-        displayedChord = null
     }
 
     override fun onCleared() {
@@ -147,8 +153,15 @@ class PitchMonitorViewModel : ViewModel() {
 
     /**
      * Processes a single audio buffer through both the pitch and chord pipelines.
+     *
+     * Called on [kotlinx.coroutines.Dispatchers.Default] from the capture
+     * coroutine. A final buffer may arrive after [stopListening] has already
+     * set [PitchMonitorUiState.isListening] to `false`; the early-return
+     * guard below prevents stale data from briefly flashing in the UI.
      */
     private fun processBuffer(samples: FloatArray) {
+        if (!_uiState.value.isListening) return
+
         val now = System.currentTimeMillis()
 
         // =====================================================================
