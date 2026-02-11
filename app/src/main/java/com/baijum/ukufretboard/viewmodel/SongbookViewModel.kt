@@ -2,6 +2,7 @@ package com.baijum.ukufretboard.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import com.baijum.ukufretboard.data.ChordProParser
 import com.baijum.ukufretboard.data.ChordSheet
 import com.baijum.ukufretboard.data.ChordSheetRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +79,46 @@ class SongbookViewModel(application: Application) : AndroidViewModel(application
         if (_currentSheet.value?.id == id) {
             _currentSheet.value = null
         }
+        refresh()
+    }
+
+    /**
+     * Imports a song from ChordPro-formatted text.
+     *
+     * Parses the content, saves the resulting [ChordSheet], and opens it.
+     *
+     * @param content The raw ChordPro text.
+     * @param filename Optional filename used as a fallback title.
+     */
+    fun importChordPro(content: String, filename: String? = null) {
+        val defaultTitle = filename
+            ?.substringBeforeLast(".")
+            ?.replace("_", " ")
+            ?: "Imported Song"
+        val sheet = ChordProParser.parse(content, defaultTitle)
+        repository.save(sheet)
+        _currentSheet.value = sheet
+        _isEditing.value = false
+        refresh()
+    }
+
+    /**
+     * Imports a song from plain text (non-ChordPro).
+     *
+     * Wraps the content in a new [ChordSheet] and saves it.
+     *
+     * @param content The raw text content (may contain [ChordName] markers).
+     * @param filename Optional filename used as the title.
+     */
+    fun importPlainText(content: String, filename: String? = null) {
+        val title = filename
+            ?.substringBeforeLast(".")
+            ?.replace("_", " ")
+            ?: "Imported Song"
+        val sheet = ChordSheet(title = title, content = content.trim())
+        repository.save(sheet)
+        _currentSheet.value = sheet
+        _isEditing.value = false
         refresh()
     }
 }

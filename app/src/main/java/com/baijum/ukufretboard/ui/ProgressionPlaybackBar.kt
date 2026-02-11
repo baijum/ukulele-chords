@@ -175,7 +175,7 @@ fun ProgressionPlaybackBar(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // BPM slider
+            // BPM slider + Tap Tempo
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -191,6 +191,10 @@ fun ProgressionPlaybackBar(
                     valueRange = 40f..220f,
                     steps = 0,
                     modifier = Modifier.weight(1f),
+                )
+                TapTempoButton(
+                    onBpmDetected = { detected -> bpm = detected.toFloat() },
+                    modifier = Modifier.padding(start = 4.dp),
                 )
             }
 

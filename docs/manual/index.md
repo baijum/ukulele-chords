@@ -8,10 +8,12 @@ Welcome to **Ukulele Companion**, a free, offline, ad-free Android app for learn
 2. [Explorer](02-explorer.md) — Interactive fretboard, chord detection, and scale overlay
 3. [Chords](03-chords.md) — Browsing the chord library and saving favorites
 4. [Patterns](04-patterns.md) — Strumming and fingerpicking pattern reference
-5. [Progressions](05-progressions.md) — Common chord progressions in any key
+5. [Progressions](05-progressions.md) — Common chord progressions in any key, with tap tempo
 6. [Favorites](06-favorites.md) — Saving and organizing your favorite voicings
-7. [Songs](07-songs.md) — Creating chord sheets with auto-scroll
+7. [Songs](07-songs.md) — Creating chord sheets with auto-scroll, transpose, key detection, and ChordPro import/export
 8. [Settings](08-settings.md) — Tuning, themes, sound, notifications, and more
+9. [Learning & Practice](09-learning.md) — Progress tracking, daily challenges, practice routines, achievements, and song finder
+10. [Play Along & Chord Training](10-play-along.md) — Real-time play-along with chord detection, spaced repetition, and chord transition animation
 
 ## About the App
 

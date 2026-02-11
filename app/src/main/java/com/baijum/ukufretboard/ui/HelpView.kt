@@ -66,6 +66,14 @@ private val HELP_SECTIONS = listOf(
                     "Microphone permission is required for this feature.",
             ),
             HelpEntry(
+                title = "Pitch Monitor",
+                description = "A real-time pitch visualisation tool that continuously listens " +
+                    "through your device's microphone and displays the detected pitch on a " +
+                    "scrolling graph.\n\n" +
+                    "Useful for monitoring your intonation while playing or singing along " +
+                    "with the ukulele. Microphone permission is required.",
+            ),
+            HelpEntry(
                 title = "Chords",
                 description = "A comprehensive chord library. Select a root note (C, C#, D, ...), " +
                     "a category (Triad, Seventh, Suspended, Extended), and a specific chord " +
@@ -84,6 +92,15 @@ private val HELP_SECTIONS = listOf(
                     "share the chord diagram as an image. Tap a card to load it onto the " +
                     "Explorer fretboard.",
             ),
+            HelpEntry(
+                title = "Song Finder",
+                description = "Discover songs you can already play based on the chords in your " +
+                    "Favorites. The app matches your known chords against a built-in song " +
+                    "database.\n\n" +
+                    "Songs are split into two lists: ones you can play right now using only " +
+                    "chords you know, and ones that are almost playable (missing just 1\u20132 " +
+                    "chords). Tap a missing chord to jump to its voicings in the library.",
+            ),
         ),
     ),
     HelpSection(
@@ -94,7 +111,18 @@ private val HELP_SECTIONS = listOf(
                 description = "A personal songbook for writing and storing chord sheets. " +
                     "Type lyrics with chords in bracket notation, e.g. [Am] and [G], and " +
                     "the app formats them with chords above the lyrics.\n\n" +
-                    "Share your chord sheets as text via any messaging app.",
+                    "Features include:\n" +
+                    "\u2022 Auto-scroll \u2014 hands-free scrolling at adjustable speed " +
+                    "(0.5x, 1x, 2x, or 3x) with pause and stop controls.\n" +
+                    "\u2022 Transpose \u2014 shift all chords up or down by semitones, with " +
+                    "an equivalent capo fret suggestion displayed automatically.\n" +
+                    "\u2022 Key detection \u2014 the app analyses the chords and displays " +
+                    "the detected musical key of the song.\n" +
+                    "\u2022 ChordPro import \u2014 import .chopro, .cho, and .chordpro files " +
+                    "from your device.\n" +
+                    "\u2022 ChordPro export \u2014 export any song to ChordPro format for use " +
+                    "in other apps.\n" +
+                    "\u2022 Share as text \u2014 send chord sheets via any messaging app.",
             ),
             HelpEntry(
                 title = "Melody Notepad",
@@ -115,6 +143,7 @@ private val HELP_SECTIONS = listOf(
                     "I\u2013V\u2013vi\u2013IV) in every key. Select a progression to see " +
                     "the actual chord names and voicings.\n\n" +
                     "Features include voice leading visualisation, sequential playback, " +
+                    "tap tempo for setting BPM by tapping rhythmically, " +
                     "and the ability to create your own custom progressions.",
             ),
         ),
@@ -161,11 +190,79 @@ private val HELP_SECTIONS = listOf(
                     "playing by ear and transcribing songs.",
             ),
             HelpEntry(
+                title = "Scale Practice",
+                description = "Practice playing scales on the fretboard with visual guidance. " +
+                    "Select a root note and scale type to see the scale pattern " +
+                    "highlighted on the fretboard.\n\n" +
+                    "Builds familiarity with scale shapes and helps develop finger dexterity " +
+                    "across the neck.",
+            ),
+            HelpEntry(
                 title = "Progress",
                 description = "A dashboard showing your learning statistics across all training " +
                     "activities: theory lessons completed, quiz scores, interval trainer " +
-                    "accuracy, and more.\n\n" +
-                    "Track your improvement over time and identify areas to focus on.",
+                    "accuracy, practice time, and more.\n\n" +
+                    "Includes a practice timer that automatically tracks your session " +
+                    "duration. View today's minutes, total time, longest session, and " +
+                    "progress towards your daily goal.",
+            ),
+            HelpEntry(
+                title = "Daily Challenge",
+                description = "Three fresh challenges generated every day to keep your " +
+                    "practice varied and engaging. Challenges may include learning a new " +
+                    "chord, taking a theory quiz, or practising a specific song.\n\n" +
+                    "Each challenge links directly to the relevant section of the app. " +
+                    "A new tip of the day is also shown for quick inspiration.",
+            ),
+            HelpEntry(
+                title = "Practice Routine",
+                description = "A guided practice session builder. Set your available time " +
+                    "(5\u201360 minutes), skill level (beginner, intermediate, advanced), " +
+                    "and focus areas (chords, scales, ear training, theory, songs, SRS).\n\n" +
+                    "The app generates a structured routine with warm-up, focused exercises, " +
+                    "and cool-down. Follow along step by step, with each step linking to " +
+                    "the relevant feature in the app.",
+            ),
+            HelpEntry(
+                title = "SRS Review",
+                description = "Spaced Repetition System for memorising chord voicings. " +
+                    "Add any chord voicing to your review deck, and the app schedules " +
+                    "reviews at increasing intervals based on how well you remember them.\n\n" +
+                    "During review, you see the chord name and try to recall the fingering " +
+                    "before revealing it. Rate your recall (Again, Hard, Good, Easy) and " +
+                    "the algorithm adjusts the next review date accordingly. Based on the " +
+                    "proven SM-2 algorithm.",
+            ),
+            HelpEntry(
+                title = "Chord Transitions",
+                description = "Visualise how your fingers move between two chords with an " +
+                    "animated fretboard diagram. Select any two chords to see each finger " +
+                    "slide, lift, or place onto its new position.\n\n" +
+                    "Adjustable animation speed and a step-by-step mode let you study " +
+                    "transitions at your own pace. A description of each finger movement " +
+                    "is shown alongside the animation.",
+            ),
+            HelpEntry(
+                title = "Play Along",
+                description = "Real-time play-along practice with audio chord detection. " +
+                    "Choose a key and a chord progression, then play your ukulele while " +
+                    "the app listens through the microphone.\n\n" +
+                    "The app detects which chord you are playing and shows live feedback " +
+                    "\u2014 a green check for correct chords and a red X for mismatches. " +
+                    "A metronome keeps time, and your performance is scored with accuracy " +
+                    "percentage, letter grade, and streak tracking.\n\n" +
+                    "Adjust BPM with a slider or tap tempo, and choose 2, 4, or 8 beats " +
+                    "per chord. Microphone permission is required.",
+            ),
+            HelpEntry(
+                title = "Achievements",
+                description = "A gallery of milestones to unlock as you use the app. " +
+                    "Achievements are earned by reaching goals such as completing lessons, " +
+                    "building quiz streaks, learning chords, saving favourites, and " +
+                    "practising regularly.\n\n" +
+                    "View your progress towards each achievement and filter by category " +
+                    "(Learning, Practice, Collection, Mastery). Locked achievements are " +
+                    "shown dimmed with their unlock criteria visible.",
             ),
         ),
     ),

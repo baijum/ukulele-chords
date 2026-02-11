@@ -1,5 +1,8 @@
 package com.baijum.ukufretboard.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,16 +27,22 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,9 +69,12 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.ChordParser
+import com.baijum.ukufretboard.data.ChordProExporter
+import com.baijum.ukufretboard.data.ChordProParser
 import com.baijum.ukufretboard.data.ChordSheet
 import com.baijum.ukufretboard.domain.ChordSheetFormatter
 import com.baijum.ukufretboard.domain.ChordSheetTranspose
+import com.baijum.ukufretboard.domain.KeyDetector
 import com.baijum.ukufretboard.viewmodel.SongbookViewModel
 
 /**
@@ -107,6 +120,13 @@ fun SongbookTab(
                 sheets = sheets,
                 onSheetTapped = { viewModel.openSheet(it) },
                 onNewSheet = { viewModel.startEditing() },
+                onImport = { content, filename ->
+                    if (filename != null && ChordProParser.isChordProFile(filename)) {
+                        viewModel.importChordPro(content, filename)
+                    } else {
+                        viewModel.importChordPro(content, filename)
+                    }
+                },
                 modifier = modifier,
             )
         }
@@ -121,8 +141,27 @@ private fun SheetList(
     sheets: List<ChordSheet>,
     onSheetTapped: (ChordSheet) -> Unit,
     onNewSheet: () -> Unit,
+    onImport: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val content = inputStream?.bufferedReader()?.readText() ?: return@let
+                inputStream.close()
+                // Extract filename from URI for fallback title
+                val filename = it.lastPathSegment
+                onImport(content, filename)
+            } catch (_: Exception) {
+                // Import failed silently
+            }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         if (sheets.isEmpty()) {
             Column(
@@ -139,7 +178,7 @@ private fun SheetList(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Tap + to create your first chord sheet.",
+                    text = "Tap + to create your first chord sheet.\nOr import a ChordPro file.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -156,14 +195,34 @@ private fun SheetList(
             }
         }
 
-        FloatingActionButton(
-            onClick = onNewSheet,
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "New chord sheet")
+            // Import button
+            SmallFloatingActionButton(
+                onClick = {
+                    importLauncher.launch(arrayOf("text/*", "*/*"))
+                },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) {
+                Icon(
+                    Icons.Filled.FileOpen,
+                    contentDescription = "Import ChordPro file",
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            // New sheet button
+            FloatingActionButton(
+                onClick = onNewSheet,
+                containerColor = MaterialTheme.colorScheme.primary,
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "New chord sheet")
+            }
         }
     }
 }
@@ -230,15 +289,47 @@ private fun SheetViewer(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
-            IconButton(onClick = {
-                val formatted = ChordSheetFormatter.formatChordsAboveLyrics(sheet)
-                ChordSheetFormatter.shareText(
-                    context = context,
-                    title = sheet.title.ifEmpty { "Chord Sheet" },
-                    text = formatted,
-                )
-            }) {
-                Icon(Icons.Filled.Share, contentDescription = "Share")
+            // Share / Export menu
+            Box {
+                var showShareMenu by remember { mutableStateOf(false) }
+                IconButton(onClick = { showShareMenu = true }) {
+                    Icon(Icons.Filled.Share, contentDescription = "Share")
+                }
+                DropdownMenu(
+                    expanded = showShareMenu,
+                    onDismissRequest = { showShareMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Share as text") },
+                        onClick = {
+                            showShareMenu = false
+                            val formatted = ChordSheetFormatter.formatChordsAboveLyrics(sheet)
+                            ChordSheetFormatter.shareText(
+                                context = context,
+                                title = sheet.title.ifEmpty { "Chord Sheet" },
+                                text = formatted,
+                            )
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Export as ChordPro") },
+                        onClick = {
+                            showShareMenu = false
+                            val chordProText = ChordProExporter.export(sheet)
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, chordProText)
+                                putExtra(
+                                    Intent.EXTRA_SUBJECT,
+                                    ChordProExporter.suggestedFilename(sheet),
+                                )
+                            }
+                            context.startActivity(
+                                Intent.createChooser(intent, "Export ChordPro"),
+                            )
+                        },
+                    )
+                }
             }
             IconButton(onClick = onEdit) {
                 Icon(Icons.Filled.Edit, contentDescription = "Edit")
@@ -254,6 +345,21 @@ private fun SheetViewer(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 48.dp, bottom = 8.dp),
+            )
+        }
+
+        // Detect song key from chords
+        val songChords = remember(sheet.content) { ChordParser.extractChords(sheet.content) }
+        val detectedKey = remember(songChords) { KeyDetector.detectKey(songChords) }
+
+        // Key display
+        if (detectedKey != null) {
+            Text(
+                text = "Key: ${detectedKey.displayName}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 48.dp, bottom = 4.dp),
             )
         }
 
@@ -289,6 +395,23 @@ private fun SheetViewer(
                 TextButton(onClick = { transposeSemitones = 0 }) {
                     Text("Reset")
                 }
+            }
+        }
+
+        // Capo equivalent (shown when transposed)
+        if (transposeSemitones != 0) {
+            val capoFret = ((transposeSemitones % 12) + 12) % 12
+            if (capoFret > 0) {
+                Text(
+                    text = "Or use Capo $capoFret with original chords",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                )
             }
         }
 
@@ -396,7 +519,7 @@ private fun SheetViewer(
                 // Speed chips (visible when scrolling)
                 if (autoScrolling) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        listOf(1f to "1x", 2f to "2x", 3f to "3x").forEach { (speed, label) ->
+                        listOf(0.5f to "0.5x", 1f to "1x", 2f to "2x", 3f to "3x").forEach { (speed, label) ->
                             FilterChip(
                                 selected = scrollSpeed == speed,
                                 onClick = { scrollSpeed = speed },
@@ -405,13 +528,31 @@ private fun SheetViewer(
                         }
                     }
                 }
-                FloatingActionButton(
-                    onClick = { autoScrolling = !autoScrolling },
-                ) {
-                    Icon(
-                        imageVector = if (autoScrolling) Icons.Filled.Edit else Icons.Filled.PlayArrow,
-                        contentDescription = if (autoScrolling) "Stop scroll" else "Auto-scroll",
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Stop button (visible when scrolling) — resets to top
+                    if (autoScrolling) {
+                        FloatingActionButton(
+                            onClick = {
+                                autoScrolling = false
+                            },
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Stop,
+                                contentDescription = "Stop scroll",
+                            )
+                        }
+                    }
+                    // Play / Pause toggle
+                    FloatingActionButton(
+                        onClick = { autoScrolling = !autoScrolling },
+                    ) {
+                        Icon(
+                            imageVector = if (autoScrolling) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (autoScrolling) "Pause scroll" else "Auto-scroll",
+                        )
+                    }
                 }
             }
         } // Box

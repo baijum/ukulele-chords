@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baijum.ukufretboard.data.LearningStats
+import com.baijum.ukufretboard.data.PracticeStats
+import com.baijum.ukufretboard.data.PracticeTimerRepository
 import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
 
 /**
@@ -40,6 +42,7 @@ import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
 @Composable
 fun LearningProgressView(
     viewModel: LearningProgressViewModel,
+    practiceStats: PracticeStats = PracticeStats(),
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsState()
@@ -62,7 +65,64 @@ fun LearningProgressView(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── Practice Time ──
+        if (practiceStats.totalMinutes > 0 || practiceStats.todayMinutes > 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                ),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Practice Time",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        ProgressStat(
+                            value = "${practiceStats.todayMinutes}m",
+                            label = "Today",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                        ProgressStat(
+                            value = practiceStats.totalTimeFormatted,
+                            label = "Total",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                        ProgressStat(
+                            value = "${practiceStats.totalSessions}",
+                            label = "Sessions",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
+                    if (practiceStats.dailyGoal > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = { practiceStats.dailyProgress.coerceAtMost(1f) },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.tertiary,
+                            trackColor = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.2f),
+                        )
+                        Text(
+                            text = "Daily goal: ${practiceStats.todayMinutes}/${practiceStats.dailyGoal} min",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         // ── Daily Streak ──
         Card(

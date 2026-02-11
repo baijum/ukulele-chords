@@ -27,6 +27,10 @@ Each progression card shows:
 - **Duplicate** — create a copy of the progression as a new custom progression with "(Copy)" appended to the name. Available on both preset and custom progressions. This is useful when you want to create a variant without changing the original.
 - **Edit** — open the progression in the editor to rename it, add or remove chords, or change the scale type. Available on custom progressions only (presets cannot be modified).
 
+## BPM and Tap Tempo
+
+The progression playback bar includes a BPM slider to control the playback speed. Next to the slider is a **Tap Tempo** button — tap it rhythmically to set the BPM by feel. The app calculates the tempo from the intervals between your taps. After 3 seconds of inactivity, the taps reset so you can start fresh.
+
 ## Custom Progressions
 
 You can create your own custom progressions by tapping the **+ button**. Custom progressions can be edited, duplicated, and deleted.
@@ -40,3 +44,4 @@ You can create your own custom progressions by tapping the **+ button**. Custom 
 - Use progressions as a starting point for songwriting or practice sessions.
 - Tap chord chips to quickly look up voicings you are not familiar with.
 - Try the same progression in different keys to understand how transposition works.
+- Use tap tempo when following along with a song to match its speed.

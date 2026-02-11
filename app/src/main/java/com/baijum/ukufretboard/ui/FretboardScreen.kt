@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Settings
@@ -59,8 +60,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.baijum.ukufretboard.audio.ToneGenerator
+import com.baijum.ukufretboard.data.AchievementRepository
 import com.baijum.ukufretboard.data.Notes
+import com.baijum.ukufretboard.data.PracticeTimerRepository
+import com.baijum.ukufretboard.data.SrsCardRepository
+import com.baijum.ukufretboard.domain.AchievementChecker
 import com.baijum.ukufretboard.domain.ChordInfo
+import com.baijum.ukufretboard.domain.toAchievementContext
 import com.baijum.ukufretboard.domain.ChordVoicing
 import com.baijum.ukufretboard.viewmodel.ChordLibraryViewModel
 import com.baijum.ukufretboard.viewmodel.CustomProgressionViewModel
@@ -98,6 +104,13 @@ private const val NAV_CHORD_EAR = 19
 private const val NAV_HELP = 20
 private const val NAV_PITCH_MONITOR = 21
 private const val NAV_SCALE_PRACTICE = 22
+private const val NAV_ACHIEVEMENTS = 23
+private const val NAV_SONG_FINDER = 24
+private const val NAV_CHORD_TRANSITION = 25
+private const val NAV_DAILY_CHALLENGE = 26
+private const val NAV_SRS_PRACTICE = 27
+private const val NAV_PRACTICE_ROUTINE = 28
+private const val NAV_PLAY_ALONG = 29
 
 /**
  * Drawer navigation item metadata.
@@ -124,6 +137,7 @@ private fun drawerSections(): List<DrawerSection> = listOf(
         DrawerItem(NAV_PITCH_MONITOR, "Pitch Monitor", Icons.Filled.Equalizer),
         DrawerItem(NAV_LIBRARY, "Chords", Icons.Filled.Search),
         DrawerItem(NAV_FAVORITES, "Favorites", Icons.Filled.Favorite),
+        DrawerItem(NAV_SONG_FINDER, "Song Finder", Icons.Filled.Search),
     )),
     DrawerSection("Create", listOf(
         DrawerItem(NAV_SONGBOOK, "Songs", Icons.Filled.Create),
@@ -139,6 +153,12 @@ private fun drawerSections(): List<DrawerSection> = listOf(
         DrawerItem(NAV_CHORD_EAR, "Chord Ear Training", Icons.Filled.PlayArrow),
         DrawerItem(NAV_SCALE_PRACTICE, "Scale Practice", Icons.Filled.PlayArrow),
         DrawerItem(NAV_LEARNING_PROGRESS, "Progress", Icons.Filled.Favorite),
+        DrawerItem(NAV_DAILY_CHALLENGE, "Daily Challenge", Icons.Filled.Star),
+        DrawerItem(NAV_PRACTICE_ROUTINE, "Practice Routine", Icons.Filled.PlayArrow),
+        DrawerItem(NAV_SRS_PRACTICE, "SRS Review", Icons.Filled.Refresh),
+        DrawerItem(NAV_CHORD_TRANSITION, "Chord Transitions", Icons.Filled.PlayArrow),
+        DrawerItem(NAV_PLAY_ALONG, "Play Along", Icons.Filled.Mic),
+        DrawerItem(NAV_ACHIEVEMENTS, "Achievements", Icons.Filled.Star),
     )),
     DrawerSection("Reference", listOf(
         DrawerItem(NAV_CAPO_GUIDE, "Capo Guide", Icons.Filled.Info),
@@ -199,6 +219,30 @@ fun FretboardScreen(
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         ToneGenerator.init(context)
+    }
+
+    // Achievement system
+    val achievementRepository = remember { AchievementRepository(context) }
+    var unlockedAchievementIds by remember {
+        mutableStateOf(achievementRepository.getUnlocked().keys)
+    }
+
+    // SRS (Spaced Repetition) card repository
+    val srsCardRepository = remember { SrsCardRepository(context) }
+
+    // Practice session timer — tracks time spent in the app
+    val practiceTimerRepository = remember { PracticeTimerRepository(context) }
+    val sessionStartMs = remember { System.currentTimeMillis() }
+    var practiceStats by remember { mutableStateOf(practiceTimerRepository.stats()) }
+
+    // Record session when leaving the app (onStop/onDestroy via DisposableEffect)
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            val durationMs = System.currentTimeMillis() - sessionStartMs
+            if (durationMs >= 60_000L) { // Only record sessions >= 1 minute
+                practiceTimerRepository.recordSession(durationMs)
+            }
+        }
     }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -486,6 +530,7 @@ fun FretboardScreen(
                     )
                     NAV_LEARNING_PROGRESS -> LearningProgressView(
                         viewModel = learningProgressViewModel,
+                        practiceStats = practiceStats,
                     )
                     NAV_MELODY_NOTEPAD -> MelodyNotepadView(
                         onPlayNote = { pitchClass ->
@@ -524,6 +569,68 @@ fun FretboardScreen(
                     NAV_NOTE_MAP -> FretboardNoteMapView(
                         lastFret = appSettings.fretboard.lastFret,
                     )
+                    NAV_PRACTICE_ROUTINE -> PracticeRoutineView(
+                        onNavigate = { navIndex ->
+                            selectedSection = navIndex
+                        },
+                    )
+                    NAV_SRS_PRACTICE -> SrsPracticeView(
+                        repository = srsCardRepository,
+                        leftHanded = appSettings.fretboard.leftHanded,
+                        onPlayVoicing = { voicing ->
+                            fretboardViewModel.playVoicing(voicing)
+                        },
+                    )
+                    NAV_DAILY_CHALLENGE -> DailyChallengeView(
+                        onNavigate = { navIndex ->
+                            selectedSection = navIndex
+                        },
+                    )
+                    NAV_CHORD_TRANSITION -> ChordTransitionView(
+                        tuning = fretboardViewModel.tuning,
+                        lastFret = appSettings.fretboard.lastFret,
+                        leftHanded = appSettings.fretboard.leftHanded,
+                        onPlayVoicing = { voicing ->
+                            fretboardViewModel.playVoicing(voicing)
+                        },
+                    )
+                    NAV_SONG_FINDER -> SongFinderView(
+                        favoritesViewModel = favoritesViewModel,
+                        onChordTapped = { chordName ->
+                            navigateToChord(chordName, libraryViewModel) { selectedSection = NAV_LIBRARY }
+                        },
+                    )
+                    NAV_PLAY_ALONG -> PlayAlongSetup(
+                        tuning = fretboardViewModel.tuning,
+                        onPlayVoicing = { voicing ->
+                            fretboardViewModel.playVoicing(voicing)
+                        },
+                    )
+                    NAV_ACHIEVEMENTS -> {
+                        // Check for new achievements whenever the view is shown
+                        val progressState by learningProgressViewModel.state.collectAsState()
+                        val sheetsState by songbookViewModel.sheets.collectAsState()
+                        val achievementContext = progressState.toAchievementContext(
+                            songsCount = sheetsState.size,
+                            favoritesCount = currentFavorites.size,
+                        )
+                        val newlyEarned = AchievementChecker.checkNewlyEarned(
+                            achievementContext,
+                            unlockedAchievementIds,
+                        )
+                        if (newlyEarned.isNotEmpty()) {
+                            LaunchedEffect(newlyEarned) {
+                                newlyEarned.forEach { achievementRepository.unlock(it.id) }
+                                unlockedAchievementIds = achievementRepository.getUnlocked().keys
+                            }
+                        }
+                        AchievementsView(
+                            progressViewModel = learningProgressViewModel,
+                            unlockedIds = unlockedAchievementIds,
+                            songsCount = sheetsState.size,
+                            favoritesCount = currentFavorites.size,
+                        )
+                    }
                     NAV_HELP -> HelpView()
                 }
             }
