@@ -89,6 +89,7 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
 fun ProgressionsTab(
     leftHanded: Boolean = false,
     tuning: List<UkuleleString>,
+    lastFret: Int = 12,
     customProgressions: List<CustomProgression> = emptyList(),
     onChordTapped: (rootPitchClass: Int, quality: String) -> Unit,
     onSaveProgression: (name: String, description: String, degrees: List<ChordDegree>, scaleType: ScaleType) -> Unit = { _, _, _, _ -> },
@@ -106,6 +107,8 @@ fun ProgressionsTab(
     var editingProgression by remember { mutableStateOf<CustomProgression?>(null) }
     var capoResults by remember { mutableStateOf<List<CapoCalculator.ProgressionResult>?>(null) }
     var playbackProgression by remember { mutableStateOf<Progression?>(null) }
+    var practiceProgression by remember { mutableStateOf<Progression?>(null) }
+    var practiceKeyRoot by remember { mutableIntStateOf(0) }
 
     val progressions = Progressions.forScale(selectedScale)
     // Custom progressions filtered by current scale type
@@ -131,6 +134,21 @@ fun ProgressionsTab(
             onPlayVoicing = onPlayVoicing,
             onPlayAll = onPlayAll,
             leftHanded = leftHanded,
+            modifier = modifier,
+        )
+        return
+    }
+
+    // Practice mode — replaces normal content
+    if (practiceProgression != null) {
+        ProgressionPracticeView(
+            progression = practiceProgression!!,
+            keyRoot = practiceKeyRoot,
+            tuning = tuning,
+            lastFret = lastFret,
+            leftHanded = leftHanded,
+            onPlayVoicing = onPlayVoicing,
+            onBack = { practiceProgression = null },
             modifier = modifier,
         )
         return
@@ -270,6 +288,10 @@ fun ProgressionsTab(
                             ChordSheetFormatter.shareText(context, custom.progression.name, text)
                         },
                         onPlay = { playbackProgression = custom.progression },
+                        onPractice = {
+                            practiceProgression = custom.progression
+                            practiceKeyRoot = selectedRoot
+                        },
                         onDelete = { onDeleteProgression(custom.id) },
                         onDuplicate = {
                             onSaveProgression(
@@ -322,6 +344,10 @@ fun ProgressionsTab(
                         ChordSheetFormatter.shareText(context, progression.name, text)
                     },
                     onPlay = { playbackProgression = progression },
+                    onPractice = {
+                        practiceProgression = progression
+                        practiceKeyRoot = selectedRoot
+                    },
                     onDuplicate = {
                         onSaveProgression(
                             "${progression.name} (Copy)",
@@ -381,6 +407,7 @@ private fun ProgressionCard(
     onCapo: () -> Unit,
     onShare: () -> Unit,
     onPlay: () -> Unit,
+    onPractice: () -> Unit = {},
     onDelete: (() -> Unit)? = null,
     onDuplicate: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
@@ -495,6 +522,9 @@ private fun ProgressionCard(
                         contentDescription = "Play",
                         tint = MaterialTheme.colorScheme.primary,
                     )
+                }
+                TextButton(onClick = onPractice) {
+                    Text("Practice")
                 }
                 IconButton(onClick = onShare) {
                     Icon(

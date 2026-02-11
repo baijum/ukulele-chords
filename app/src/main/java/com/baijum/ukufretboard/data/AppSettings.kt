@@ -129,6 +129,31 @@ data class NotificationSettings(
 )
 
 /**
+ * Persisted preferences for the Scale Practice screen.
+ *
+ * @property lastRoot Last selected root pitch class (0–11).
+ * @property lastScaleName Last selected scale name (matches [Scale.name]).
+ * @property lastCategory Last selected category filter name (matches [ScaleCategory.name]), or empty for "All".
+ * @property lastBpm Last BPM setting for Play Along mode (40–200).
+ * @property lastMode Last selected practice mode index (0 = Play Along, 1 = Quiz, 2 = Ear Training).
+ * @property showFretboard Whether to show the compact fretboard in Play Along mode.
+ */
+data class ScalePracticeSettings(
+    val lastRoot: Int = 0,
+    val lastScaleName: String = "Major",
+    val lastCategory: String = "",
+    val lastBpm: Int = DEFAULT_BPM,
+    val lastMode: Int = 0,
+    val showFretboard: Boolean = false,
+) {
+    companion object {
+        const val MIN_BPM = 40
+        const val MAX_BPM = 200
+        const val DEFAULT_BPM = 80
+    }
+}
+
+/**
  * Top-level container for all app settings, organized by section.
  *
  * Each section is a nested data class with its own defaults.
@@ -140,4 +165,5 @@ data class AppSettings(
     val tuning: TuningSettings = TuningSettings(),
     val fretboard: FretboardSettings = FretboardSettings(),
     val notification: NotificationSettings = NotificationSettings(),
+    val scalePractice: ScalePracticeSettings = ScalePracticeSettings(),
 )

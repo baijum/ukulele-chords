@@ -194,6 +194,47 @@ class LearningProgressRepository(context: Context) {
         )
     }
 
+    // ── Scale Practice ─────────────────────────────────────────────
+
+    /**
+     * Records a scale practice answer (quiz or ear training).
+     *
+     * @param mode "quiz" or "ear" to distinguish the two practice types.
+     * @param correct Whether the answer was correct.
+     */
+    fun recordScalePracticeAnswer(mode: String, correct: Boolean) {
+        val m = mode.lowercase()
+        incrementInt("$KEY_SCALE_PRACTICE_TOTAL$m")
+        incrementInt(KEY_SCALE_PRACTICE_TOTAL_ALL)
+        if (correct) {
+            incrementInt("$KEY_SCALE_PRACTICE_CORRECT$m")
+            incrementInt(KEY_SCALE_PRACTICE_CORRECT_ALL)
+            val newStreak = incrementInt("$KEY_SCALE_PRACTICE_STREAK$m")
+            updateBestStreak("$KEY_SCALE_PRACTICE_BEST$m", newStreak)
+            val newOverallStreak = incrementInt(KEY_SCALE_PRACTICE_STREAK_ALL)
+            updateBestStreak(KEY_SCALE_PRACTICE_BEST_ALL, newOverallStreak)
+        } else {
+            prefs.edit()
+                .putInt("$KEY_SCALE_PRACTICE_STREAK$m", 0)
+                .putInt(KEY_SCALE_PRACTICE_STREAK_ALL, 0)
+                .apply()
+        }
+        recordActivity()
+    }
+
+    /** Returns scale practice stats for a mode ("quiz"/"ear"), or overall if null. */
+    fun scalePracticeStats(mode: String? = null): LearningStats {
+        val suffix = mode?.lowercase() ?: "ALL"
+        val totalKey = if (mode != null) "$KEY_SCALE_PRACTICE_TOTAL${suffix}" else KEY_SCALE_PRACTICE_TOTAL_ALL
+        val correctKey = if (mode != null) "$KEY_SCALE_PRACTICE_CORRECT${suffix}" else KEY_SCALE_PRACTICE_CORRECT_ALL
+        val bestKey = if (mode != null) "$KEY_SCALE_PRACTICE_BEST${suffix}" else KEY_SCALE_PRACTICE_BEST_ALL
+        return LearningStats(
+            total = prefs.getInt(totalKey, 0),
+            correct = prefs.getInt(correctKey, 0),
+            bestStreak = prefs.getInt(bestKey, 0),
+        )
+    }
+
     // ── Daily Streak ────────────────────────────────────────────────
 
     /** Records a learning activity for today. Updates the daily streak. */
@@ -332,6 +373,16 @@ class LearningProgressRepository(context: Context) {
         private const val KEY_CHORD_EAR_CORRECT_ALL = "chord_ear_correct_ALL"
         private const val KEY_CHORD_EAR_STREAK_ALL = "chord_ear_streak_ALL"
         private const val KEY_CHORD_EAR_BEST_ALL = "chord_ear_best_ALL"
+
+        // Scale Practice keys
+        private const val KEY_SCALE_PRACTICE_TOTAL = "scale_practice_total_"
+        private const val KEY_SCALE_PRACTICE_CORRECT = "scale_practice_correct_"
+        private const val KEY_SCALE_PRACTICE_STREAK = "scale_practice_streak_"
+        private const val KEY_SCALE_PRACTICE_BEST = "scale_practice_best_"
+        private const val KEY_SCALE_PRACTICE_TOTAL_ALL = "scale_practice_total_ALL"
+        private const val KEY_SCALE_PRACTICE_CORRECT_ALL = "scale_practice_correct_ALL"
+        private const val KEY_SCALE_PRACTICE_STREAK_ALL = "scale_practice_streak_ALL"
+        private const val KEY_SCALE_PRACTICE_BEST_ALL = "scale_practice_best_ALL"
 
         // Streak keys
         private const val KEY_LAST_ACTIVITY = "last_activity_date"

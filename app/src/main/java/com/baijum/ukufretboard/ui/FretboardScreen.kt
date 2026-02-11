@@ -72,6 +72,7 @@ import com.baijum.ukufretboard.viewmodel.BackupRestoreViewModel
 import com.baijum.ukufretboard.viewmodel.TunerViewModel
 import com.baijum.ukufretboard.viewmodel.PitchMonitorViewModel
 import com.baijum.ukufretboard.viewmodel.LearningProgressViewModel
+import com.baijum.ukufretboard.viewmodel.ScalePracticeViewModel
 
 /** Navigation section indices. */
 private const val NAV_EXPLORER = 0
@@ -96,6 +97,7 @@ private const val NAV_NOTE_QUIZ = 18
 private const val NAV_CHORD_EAR = 19
 private const val NAV_HELP = 20
 private const val NAV_PITCH_MONITOR = 21
+private const val NAV_SCALE_PRACTICE = 22
 
 /**
  * Drawer navigation item metadata.
@@ -135,6 +137,7 @@ private fun drawerSections(): List<DrawerSection> = listOf(
         DrawerItem(NAV_INTERVAL_TRAINER, "Interval Trainer", Icons.Filled.PlayArrow),
         DrawerItem(NAV_NOTE_QUIZ, "Note Quiz", Icons.Filled.Search),
         DrawerItem(NAV_CHORD_EAR, "Chord Ear Training", Icons.Filled.PlayArrow),
+        DrawerItem(NAV_SCALE_PRACTICE, "Scale Practice", Icons.Filled.PlayArrow),
         DrawerItem(NAV_LEARNING_PROGRESS, "Progress", Icons.Filled.Favorite),
     )),
     DrawerSection("Reference", listOf(
@@ -177,6 +180,7 @@ fun FretboardScreen(
     tunerViewModel: TunerViewModel = viewModel(),
     pitchMonitorViewModel: PitchMonitorViewModel = viewModel(),
     learningProgressViewModel: LearningProgressViewModel = viewModel(),
+    scalePracticeViewModel: ScalePracticeViewModel = viewModel(),
 ) {
     var selectedSection by remember { mutableIntStateOf(NAV_EXPLORER) }
     var showSettings by remember { mutableStateOf(false) }
@@ -228,6 +232,11 @@ fun FretboardScreen(
     // Sync show-note-names setting
     LaunchedEffect(appSettings.fretboard.showNoteNames) {
         fretboardViewModel.setShowNoteNames(appSettings.fretboard.showNoteNames)
+    }
+
+    // Restore scale practice settings once
+    LaunchedEffect(Unit) {
+        scalePracticeViewModel.restoreSettings(appSettings.scalePractice)
     }
 
     // Full-screen landscape fretboard mode
@@ -416,6 +425,7 @@ fun FretboardScreen(
                     NAV_PROGRESSIONS -> ProgressionsTab(
                         leftHanded = appSettings.fretboard.leftHanded,
                         tuning = fretboardViewModel.tuning,
+                        lastFret = appSettings.fretboard.lastFret,
                         customProgressions = customProgressions,
                         onChordTapped = { rootPitchClass, quality ->
                             libraryViewModel.selectRoot(rootPitchClass)
@@ -499,6 +509,15 @@ fun FretboardScreen(
                     )
                     NAV_CHORD_EAR -> ChordEarTrainingView(
                         progressViewModel = learningProgressViewModel,
+                    )
+                    NAV_SCALE_PRACTICE -> ScalePracticeView(
+                        viewModel = scalePracticeViewModel,
+                        progressViewModel = learningProgressViewModel,
+                        onSettingsChanged = { newSettings ->
+                            settingsViewModel.updateScalePractice { newSettings }
+                        },
+                        tuning = fretboardViewModel.tuning,
+                        lastFret = appSettings.fretboard.lastFret,
                     )
                     NAV_SCALE_CHORDS -> ScaleChordView()
                     NAV_GLOSSARY -> GlossaryView()

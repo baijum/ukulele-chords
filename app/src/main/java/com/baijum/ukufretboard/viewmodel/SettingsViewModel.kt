@@ -7,6 +7,7 @@ import com.baijum.ukufretboard.data.AppSettings
 import com.baijum.ukufretboard.data.DisplaySettings
 import com.baijum.ukufretboard.data.FretboardSettings
 import com.baijum.ukufretboard.data.NotificationSettings
+import com.baijum.ukufretboard.data.ScalePracticeSettings
 import com.baijum.ukufretboard.data.SoundSettings
 import com.baijum.ukufretboard.data.ThemeMode
 import com.baijum.ukufretboard.data.TuningSettings
@@ -90,6 +91,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
+     * Updates the scale practice settings by applying a transformation function.
+     */
+    fun updateScalePractice(transform: (ScalePracticeSettings) -> ScalePracticeSettings) {
+        _settings.update { current ->
+            current.copy(scalePractice = transform(current.scalePractice)).also { saveSettings(it) }
+        }
+    }
+
+    /**
      * Replaces all settings with the given [AppSettings].
      * Used for sync/restore operations.
      */
@@ -124,6 +134,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             .putBoolean(KEY_SHOW_NOTE_NAMES, s.fretboard.showNoteNames)
             // Notification
             .putBoolean(KEY_CHORD_OF_DAY_ENABLED, s.notification.chordOfDayEnabled)
+            // Scale Practice
+            .putInt(KEY_SCALE_PRACTICE_ROOT, s.scalePractice.lastRoot)
+            .putString(KEY_SCALE_PRACTICE_SCALE, s.scalePractice.lastScaleName)
+            .putString(KEY_SCALE_PRACTICE_CATEGORY, s.scalePractice.lastCategory)
+            .putInt(KEY_SCALE_PRACTICE_BPM, s.scalePractice.lastBpm)
+            .putInt(KEY_SCALE_PRACTICE_MODE, s.scalePractice.lastMode)
+            .putBoolean(KEY_SCALE_PRACTICE_FRETBOARD, s.scalePractice.showFretboard)
             .apply()
     }
 
@@ -161,6 +178,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             notification = NotificationSettings(
                 chordOfDayEnabled = prefs.getBoolean(KEY_CHORD_OF_DAY_ENABLED, false),
             ),
+            scalePractice = ScalePracticeSettings(
+                lastRoot = prefs.getInt(KEY_SCALE_PRACTICE_ROOT, 0),
+                lastScaleName = prefs.getString(KEY_SCALE_PRACTICE_SCALE, "Major") ?: "Major",
+                lastCategory = prefs.getString(KEY_SCALE_PRACTICE_CATEGORY, "") ?: "",
+                lastBpm = prefs.getInt(KEY_SCALE_PRACTICE_BPM, ScalePracticeSettings.DEFAULT_BPM),
+                lastMode = prefs.getInt(KEY_SCALE_PRACTICE_MODE, 0),
+                showFretboard = prefs.getBoolean(KEY_SCALE_PRACTICE_FRETBOARD, false),
+            ),
         )
     }
 
@@ -178,5 +203,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         private const val KEY_LAST_FRET = "last_fret"
         private const val KEY_SHOW_NOTE_NAMES = "show_note_names"
         private const val KEY_CHORD_OF_DAY_ENABLED = "chord_of_day_enabled"
+        private const val KEY_SCALE_PRACTICE_ROOT = "scale_practice_root"
+        private const val KEY_SCALE_PRACTICE_SCALE = "scale_practice_scale"
+        private const val KEY_SCALE_PRACTICE_CATEGORY = "scale_practice_category"
+        private const val KEY_SCALE_PRACTICE_BPM = "scale_practice_bpm"
+        private const val KEY_SCALE_PRACTICE_MODE = "scale_practice_mode"
+        private const val KEY_SCALE_PRACTICE_FRETBOARD = "scale_practice_fretboard"
     }
 }

@@ -80,6 +80,16 @@ class LearningProgressViewModel(application: Application) : AndroidViewModel(app
     fun chordEarStats(level: Int? = null): LearningStats =
         repository.chordEarStats(level)
 
+    // ── Scale Practice ─────────────────────────────────────────────
+
+    fun recordScalePracticeAnswer(mode: String, correct: Boolean) {
+        repository.recordScalePracticeAnswer(mode, correct)
+        refresh()
+    }
+
+    fun scalePracticeStats(mode: String? = null): LearningStats =
+        repository.scalePracticeStats(mode)
+
     // ── Reset ───────────────────────────────────────────────────────
 
     fun clearAllProgress() {
@@ -110,6 +120,10 @@ class LearningProgressViewModel(application: Application) : AndroidViewModel(app
             noteQuizStats = repository.noteQuizStats(),
             chordEarStatsOverall = repository.chordEarStats(),
             chordEarStatsByLevel = (1..4).associateWith { repository.chordEarStats(it) },
+            scalePracticeStatsOverall = repository.scalePracticeStats(),
+            scalePracticeStatsByMode = listOf("quiz", "ear").associateWith {
+                repository.scalePracticeStats(it)
+            },
             currentDayStreak = repository.currentDayStreak(),
             bestDayStreak = repository.bestDayStreak(),
         )
@@ -130,6 +144,8 @@ data class LearningProgressState(
     val noteQuizStats: LearningStats = LearningStats(0, 0, 0),
     val chordEarStatsOverall: LearningStats = LearningStats(0, 0, 0),
     val chordEarStatsByLevel: Map<Int, LearningStats> = emptyMap(),
+    val scalePracticeStatsOverall: LearningStats = LearningStats(0, 0, 0),
+    val scalePracticeStatsByMode: Map<String, LearningStats> = emptyMap(),
     val currentDayStreak: Int = 0,
     val bestDayStreak: Int = 0,
 ) {
