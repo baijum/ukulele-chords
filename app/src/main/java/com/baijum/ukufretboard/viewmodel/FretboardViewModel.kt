@@ -9,7 +9,10 @@ import com.baijum.ukufretboard.data.Scales
 import com.baijum.ukufretboard.data.SoundSettings
 import com.baijum.ukufretboard.data.TuningSettings
 import com.baijum.ukufretboard.data.UkuleleTuning
+import com.baijum.ukufretboard.data.ChordFormula
+import com.baijum.ukufretboard.domain.AlternateChord
 import com.baijum.ukufretboard.domain.ChordDetector
+import com.baijum.ukufretboard.domain.ChordResult
 import com.baijum.ukufretboard.domain.Note
 import com.baijum.ukufretboard.domain.calculateNote
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -273,20 +276,104 @@ class FretboardViewModel : ViewModel() {
      * Applies a chord voicing from the chord library onto the fretboard.
      *
      * Sets each string's fret selection to the voicing's fret values and
-     * re-runs chord detection on the resulting selection.
+     * determines the chord detection result.
+     *
+     * When [rootPitchClass] and [formula] are provided (i.e., the voicing came
+     * from the chord library with a known identity), the detection result uses
+     * that identity as the primary chord name and discovers alternates via
+     * detection. This avoids the ambiguity where, for example, an Am7 voicing
+     * would otherwise be detected as C6 due to candidate-root ordering.
+     *
+     * When called without chord context (e.g., programmatic use), falls back to
+     * normal detection.
      *
      * @param voicing The [ChordVoicing] to apply (one fret per string).
+     * @param rootPitchClass The pitch class of the intended root note (0–11),
+     *   or null to use detection.
+     * @param formula The [ChordFormula] of the intended chord, or null to use detection.
      */
-    fun applyVoicing(voicing: com.baijum.ukufretboard.domain.ChordVoicing) {
+    fun applyVoicing(
+        voicing: com.baijum.ukufretboard.domain.ChordVoicing,
+        rootPitchClass: Int? = null,
+        formula: ChordFormula? = null,
+    ) {
         _uiState.update { current ->
             val newSelections = voicing.frets.mapIndexed { i, fret ->
                 i to (if (fret < 0) null else fret)
             }.toMap()
+
+            val detection = if (rootPitchClass != null && formula != null) {
+                // Run detection to discover alternate chord names
+                val detected = detectChord(newSelections)
+                val alternates = buildAlternates(detected, rootPitchClass, formula)
+
+                val rootNote = Note(
+                    pitchClass = rootPitchClass,
+                    name = Notes.pitchClassToName(rootPitchClass),
+                )
+                val chordNotes = newSelections.entries
+                    .sortedBy { it.key }
+                    .mapNotNull { (i, fret) ->
+                        fret?.let {
+                            val pc = (tuning[i].openPitchClass + it) % Notes.PITCH_CLASS_COUNT
+                            Note(pitchClass = pc, name = Notes.pitchClassToName(pc))
+                        }
+                    }
+
+                ChordDetector.DetectionResult.ChordFound(
+                    ChordResult(
+                        name = rootNote.name + formula.symbol,
+                        quality = formula.quality,
+                        root = rootNote,
+                        notes = chordNotes,
+                        matchedFormula = formula,
+                        alternates = alternates,
+                    )
+                )
+            } else {
+                detectChord(newSelections)
+            }
+
             current.copy(
                 selections = newSelections,
-                detectionResult = detectChord(newSelections),
+                detectionResult = detection,
             )
         }
+    }
+
+    /**
+     * Builds the list of alternate chord interpretations, excluding the
+     * intended chord identified by [rootPitchClass] and [formula].
+     */
+    private fun buildAlternates(
+        detected: ChordDetector.DetectionResult,
+        rootPitchClass: Int,
+        formula: ChordFormula,
+    ): List<AlternateChord> {
+        if (detected !is ChordDetector.DetectionResult.ChordFound) return emptyList()
+        val result = detected.result
+        val all = mutableListOf<AlternateChord>()
+
+        // Include the detector's primary result if it differs from the intended chord
+        if (result.matchedFormula != null &&
+            (result.root.pitchClass != rootPitchClass || result.matchedFormula != formula)
+        ) {
+            all.add(
+                AlternateChord(
+                    name = result.name,
+                    rootPitchClass = result.root.pitchClass,
+                    formula = result.matchedFormula,
+                )
+            )
+        }
+
+        // Include the detector's own alternates, excluding the intended chord
+        all.addAll(
+            result.alternates.filter {
+                it.rootPitchClass != rootPitchClass || it.formula != formula
+            }
+        )
+        return all
     }
 
     /**

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.baijum.ukufretboard.domain.AlternateChord
 import com.baijum.ukufretboard.domain.ChordDetector
 import com.baijum.ukufretboard.domain.ChordInfo
 import com.baijum.ukufretboard.viewmodel.FretboardViewModel
@@ -48,6 +49,9 @@ import com.baijum.ukufretboard.viewmodel.UkuleleString
  * @param frets The raw fret list (4 values, one per string) for computing fingering
  *   and difficulty. Null when no chord is selected or frets are not available.
  * @param tuning The current ukulele tuning, used for inversion detection.
+ * @param onAlternateChordTapped Callback invoked when the user taps an alternate chord
+ *   name (e.g., tapping "Am7" when "C6" is the primary). Navigates to that chord's
+ *   voicings in the chord library. Null disables the alternate names display.
  * @param modifier Optional [Modifier] for layout customization.
  */
 @Composable
@@ -61,6 +65,7 @@ fun ChordResultView(
     capoFret: Int = 0,
     onShareChord: (() -> Unit)? = null,
     onShowInLibrary: (() -> Unit)? = null,
+    onAlternateChordTapped: ((AlternateChord) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val hasNotes = detectionResult !is ChordDetector.DetectionResult.NoSelection
@@ -151,6 +156,59 @@ fun ChordResultView(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+
+                // Alternate chord names (e.g., "Also: Am7" when primary is C6)
+                if (result.alternates.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Also: ",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        result.alternates.forEachIndexed { index, alt ->
+                            if (index > 0) {
+                                Text(
+                                    text = ", ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            // Compute slash notation for this alternate interpretation
+                            val altDisplayName = if (invFrets != null && invFrets.size == 4) {
+                                val altInversion = ChordInfo.determineInversion(
+                                    invFrets, alt.rootPitchClass, alt.formula, tuning,
+                                )
+                                if (altInversion != ChordInfo.Inversion.ROOT) {
+                                    val bassPc = ChordInfo.bassPitchClass(invFrets, tuning)
+                                    ChordInfo.slashNotation(alt.name, altInversion, bassPc)
+                                } else {
+                                    alt.name
+                                }
+                            } else {
+                                alt.name
+                            }
+                            if (onAlternateChordTapped != null) {
+                                Text(
+                                    text = altDisplayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    textDecoration = TextDecoration.Underline,
+                                    modifier = Modifier.clickable {
+                                        onAlternateChordTapped(alt)
+                                    },
+                                )
+                            } else {
+                                Text(
+                                    text = altDisplayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = result.notes.joinToString(" \u2013 ") { it.name },

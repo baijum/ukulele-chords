@@ -1,5 +1,6 @@
 package com.baijum.ukufretboard.domain
 
+import com.baijum.ukufretboard.data.ChordFormula
 import com.baijum.ukufretboard.data.ChordFormulas
 import com.baijum.ukufretboard.data.Notes
 
@@ -77,18 +78,22 @@ object ChordDetector {
      *
      *     interval = (pitchClass - candidateRoot + 12) % 12
      *
-     * If the resulting interval set exactly matches a known [ChordFormulas] entry,
-     * a [ChordResult] is returned with the candidate as the root.
+     * Collects **all** matching (root, formula) pairs so that enharmonically
+     * equivalent chords are surfaced as alternates. For example, pitch classes
+     * {A, C, E, G} will match both C6 and Am7. The first match becomes the
+     * primary result; the rest are returned as [AlternateChord] entries.
      *
      * The outer loop iterates over candidate roots in the order they appear in the
      * input, and the inner loop iterates over formulas in priority order (triads
-     * before seventh chords). This means the first valid match is returned.
+     * before seventh chords).
      *
      * @param uniquePitchClasses A list of 3 or more distinct pitch class integers.
-     * @return [DetectionResult.ChordFound] if a match is found, or [DetectionResult.NoMatch].
+     * @return [DetectionResult.ChordFound] if at least one match is found,
+     *   or [DetectionResult.NoMatch].
      */
     private fun findChord(uniquePitchClasses: List<Int>): DetectionResult {
         val pitchClassSet = uniquePitchClasses.toSet()
+        val matches = mutableListOf<Pair<Int, ChordFormula>>()
 
         for (candidateRoot in uniquePitchClasses) {
             // Compute intervals relative to the candidate root
@@ -96,33 +101,46 @@ object ChordDetector {
                 (pc - candidateRoot + Notes.PITCH_CLASS_COUNT) % Notes.PITCH_CLASS_COUNT
             }.toSet()
 
-            // Try to match against known chord formulas
+            // Collect all matching formulas for this candidate root
             for (formula in ChordFormulas.ALL) {
                 if (intervals == formula.intervals) {
-                    val rootNote = Note(
-                        pitchClass = candidateRoot,
-                        name = Notes.pitchClassToName(candidateRoot),
-                    )
-                    val chordNotes = uniquePitchClasses.map {
-                        Note(pitchClass = it, name = Notes.pitchClassToName(it))
-                    }
-                    return DetectionResult.ChordFound(
-                        ChordResult(
-                            name = rootNote.name + formula.symbol,
-                            quality = formula.quality,
-                            root = rootNote,
-                            notes = chordNotes,
-                            matchedFormula = formula,
-                        )
-                    )
+                    matches.add(candidateRoot to formula)
                 }
             }
         }
 
-        // No formula matched any candidate root
-        val notes = uniquePitchClasses.map {
+        if (matches.isEmpty()) {
+            val notes = uniquePitchClasses.map {
+                Note(pitchClass = it, name = Notes.pitchClassToName(it))
+            }
+            return DetectionResult.NoMatch(notes)
+        }
+
+        val (primaryRoot, primaryFormula) = matches.first()
+        val rootNote = Note(
+            pitchClass = primaryRoot,
+            name = Notes.pitchClassToName(primaryRoot),
+        )
+        val chordNotes = uniquePitchClasses.map {
             Note(pitchClass = it, name = Notes.pitchClassToName(it))
         }
-        return DetectionResult.NoMatch(notes)
+        val alternates = matches.drop(1).map { (root, formula) ->
+            AlternateChord(
+                name = Notes.pitchClassToName(root) + formula.symbol,
+                rootPitchClass = root,
+                formula = formula,
+            )
+        }
+
+        return DetectionResult.ChordFound(
+            ChordResult(
+                name = rootNote.name + primaryFormula.symbol,
+                quality = primaryFormula.quality,
+                root = rootNote,
+                notes = chordNotes,
+                matchedFormula = primaryFormula,
+                alternates = alternates,
+            )
+        )
     }
 }

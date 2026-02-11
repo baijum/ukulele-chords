@@ -21,9 +21,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -228,17 +226,15 @@ fun ChordLibraryTab(
 
                 SectionLabel("$rootName$symbol — ${filteredVoicings.size} voicings")
 
-                // Inversion filter chips + Compare button
-                Row(
+                // Inversion filter chips + action buttons
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
@@ -249,7 +245,10 @@ fun ChordLibraryTab(
                             inversionCounts = inversionCounts,
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                    ) {
                         OutlinedButton(
                             onClick = {
                                 val formula = uiState.selectedFormula ?: return@OutlinedButton
@@ -715,33 +714,16 @@ private fun VoicingGrid(
                     ChordInfo.findBassStringIndex(voicing.frets, tuning)
                 }
 
-                Box {
-                    VerticalChordDiagram(
-                        voicing = voicing,
-                        onClick = { onVoicingSelected(voicing) },
-                        onLongClick = onVoicingLongPressed?.let { callback -> { callback(voicing) } },
-                        leftHanded = leftHanded,
-                        inversionLabel = inversionLabel,
-                        bassStringIndex = bassIndex,
-                    )
-                    // Heart icon overlay in the top-end corner
-                    if (onFavoriteClick != null) {
-                        val favorited = isFavorite?.invoke(voicing) == true
-                        IconButton(
-                            onClick = { onFavoriteClick(voicing) },
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(28.dp),
-                        ) {
-                            Icon(
-                                imageVector = if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = if (favorited) "Remove from favorites" else "Add to favorites",
-                                tint = if (favorited) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                }
+                VerticalChordDiagram(
+                    voicing = voicing,
+                    onClick = { onVoicingSelected(voicing) },
+                    onLongClick = onVoicingLongPressed?.let { callback -> { callback(voicing) } },
+                    leftHanded = leftHanded,
+                    inversionLabel = inversionLabel,
+                    bassStringIndex = bassIndex,
+                    isFavorite = isFavorite?.invoke(voicing) == true,
+                    onFavoriteClick = onFavoriteClick?.let { callback -> { callback(voicing) } },
+                )
             }
         }
     }

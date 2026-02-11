@@ -3,14 +3,20 @@ package com.baijum.ukufretboard.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,7 +57,7 @@ private val OPEN_CIRCLE_RADIUS = 6.dp
 private val NUT_THICKNESS = 4.dp
 
 /** Width reserved on the left for the fret-position label (e.g. "3fr"). */
-private val POSITION_LABEL_WIDTH = 22.dp
+private val POSITION_LABEL_WIDTH = 34.dp
 
 /** Vertical space above the grid reserved for open-string circles. */
 private val OPEN_CIRCLE_AREA = 18.dp
@@ -77,6 +83,8 @@ private val RIGHT_PADDING = 12.dp
  * @param commonToneIndices Optional set of string indices highlighted as common tones.
  * @param capoFret Optional capo fret position; draws a horizontal bar across all strings.
  * @param soundingNotes Optional note-name override shown below the diagram (e.g. for capo).
+ * @param isFavorite Whether this voicing is in the user's favorites (shows a filled heart).
+ * @param onFavoriteClick Optional callback for the favorite heart icon. When null, no icon is shown.
  * @param modifier Optional [Modifier] for layout customization.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -91,6 +99,8 @@ fun VerticalChordDiagram(
     commonToneIndices: Set<Int>? = null,
     capoFret: Int? = null,
     soundingNotes: String? = null,
+    isFavorite: Boolean = false,
+    onFavoriteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // Determine the fret range to display
@@ -120,44 +130,66 @@ fun VerticalChordDiagram(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // The vertical chord diagram canvas
-            VerticalChordCanvas(
-                voicing = voicing,
-                startFret = startFret,
-                fretRowCount = fretRowCount,
-                isAtNut = isAtNut,
-                leftHanded = leftHanded,
-                bassStringIndex = bassStringIndex,
-                commonToneIndices = commonToneIndices,
-                capoFret = capoFret,
-            )
+        Box {
+            Column(
+                modifier = Modifier.padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // The vertical chord diagram canvas
+                VerticalChordCanvas(
+                    voicing = voicing,
+                    startFret = startFret,
+                    fretRowCount = fretRowCount,
+                    isAtNut = isAtNut,
+                    leftHanded = leftHanded,
+                    bassStringIndex = bassStringIndex,
+                    commonToneIndices = commonToneIndices,
+                    capoFret = capoFret,
+                )
 
-            Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-            // Note names below (show sounding notes if capo is active)
-            Text(
-                text = soundingNotes ?: voicing.notes.joinToString(" ") { it.name },
-                style = MaterialTheme.typography.labelSmall,
-                color = if (soundingNotes != null)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-
-            // Inversion label
-            if (inversionLabel != null) {
+                // Note names below (show sounding notes if capo is active)
                 Text(
-                    text = inversionLabel,
+                    text = soundingNotes ?: voicing.notes.joinToString(" ") { it.name },
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = if (soundingNotes != null)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+
+                // Inversion label
+                if (inversionLabel != null) {
+                    Text(
+                        text = inversionLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            // Favorite heart icon at top-left inside the card
+            if (onFavoriteClick != null) {
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .size(28.dp),
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite
+                        else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from favorites"
+                        else "Add to favorites",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
     }
@@ -229,17 +261,7 @@ private fun VerticalChordCanvas(
             }
         }
 
-        // ── 1. Position label ("3fr") when not at nut ──
-        if (!isAtNut) {
-            drawPositionLabel(
-                text = "${startFret}fr",
-                x = posLabelPx / 2,
-                y = gridTop + fretSpacePx / 2,
-                color = posLabelColor,
-            )
-        }
-
-        // ── 2. Nut (thick horizontal bar at the top of the grid) ──
+        // ── 1. Nut (thick horizontal bar at the top of the grid) ──
         if (isAtNut) {
             drawLine(
                 color = nutColor,
@@ -326,6 +348,17 @@ private fun VerticalChordCanvas(
                     center = Offset(x, y),
                 )
             }
+        }
+
+        // ── 7. Position label ("3fr") when not at nut ──
+        // Drawn last so it renders on top of any dots that might overlap
+        if (!isAtNut) {
+            drawPositionLabel(
+                text = "${startFret}fr",
+                x = posLabelPx / 2,
+                y = gridTop + fretSpacePx / 2,
+                color = posLabelColor,
+            )
         }
     }
 }

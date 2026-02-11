@@ -421,7 +421,12 @@ fun FretboardScreen(
                     NAV_LIBRARY -> ChordLibraryTab(
                         viewModel = libraryViewModel,
                         onVoicingSelected = { voicing ->
-                            fretboardViewModel.applyVoicing(voicing)
+                            val state = libraryViewModel.uiState.value
+                            fretboardViewModel.applyVoicing(
+                                voicing = voicing,
+                                rootPitchClass = state.selectedRoot,
+                                formula = state.selectedFormula,
+                            )
                             selectedSection = NAV_EXPLORER
                         },
                         onVoicingLongPressed = { voicing ->
@@ -914,6 +919,9 @@ private fun ExplorerTabContent(
             capoFret = uiState.capoFret,
             onShareChord = shareCallback,
             onShowInLibrary = showInLibraryCallback,
+            onAlternateChordTapped = if (onShowInLibrary != null) {
+                { alt -> onShowInLibrary(alt.rootPitchClass, alt.formula) }
+            } else null,
             modifier = Modifier.fillMaxWidth(),
         )
     }

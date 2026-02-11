@@ -158,7 +158,7 @@ private fun ShareableChordCanvas(
     val openCircleRadius = 8.dp
     val dotRadius = 13.dp
     val nutThickness = 5.dp
-    val positionLabelWidth = 28.dp
+    val positionLabelWidth = 48.dp
 
     // Total canvas size (extra space at bottom for note names + fret numbers)
     val canvasWidth = positionLabelWidth + stringSpacing * (STRING_COUNT - 1) + 24.dp
@@ -184,24 +184,6 @@ private fun ShareableChordCanvas(
         // X positions for each string
         val stringXPositions = (0 until STRING_COUNT).map { i ->
             posLabelPx + i * stringSpacePx
-        }
-
-        // Draw position indicator (e.g., "3fr") if not at nut
-        if (!isAtNut) {
-            drawContext.canvas.nativeCanvas.apply {
-                val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.DKGRAY
-                    textSize = 12.sp.toPx()
-                    textAlign = android.graphics.Paint.Align.CENTER
-                    isAntiAlias = true
-                }
-                drawText(
-                    "${startFret}fr",
-                    posLabelPx / 2,
-                    gridTop + fretSpacePx / 2 + paint.textSize / 3,
-                    paint,
-                )
-            }
         }
 
         // Draw nut (thick bar at the top)
@@ -250,7 +232,11 @@ private fun ShareableChordCanvas(
             } else {
                 // Fretted position: draw filled dot with finger number
                 val relFret = fret - startFret
-                val y = gridTop + (relFret - 0.5f) * fretSpacePx
+                val y = if (isAtNut) {
+                    gridTop + (relFret - 0.5f) * fretSpacePx
+                } else {
+                    gridTop + (relFret + 0.5f) * fretSpacePx
+                }
 
                 // Green filled dot
                 drawCircle(
@@ -264,6 +250,24 @@ private fun ShareableChordCanvas(
                 if (finger > 0) {
                     drawFingerNumber(x, y, finger, dotRadiusPx)
                 }
+            }
+        }
+
+        // Draw position indicator (e.g., "7fr") after dots so it renders on top
+        if (!isAtNut) {
+            drawContext.canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.DKGRAY
+                    textSize = 12.sp.toPx()
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    isAntiAlias = true
+                }
+                drawText(
+                    "${startFret}fr",
+                    posLabelPx / 2,
+                    gridTop + fretSpacePx / 2 + paint.textSize / 3,
+                    paint,
+                )
             }
         }
 
