@@ -66,6 +66,19 @@ Theory lessons, ear training, interval trainer, circle of fifths, glossary, scal
 </tr>
 </table>
 
+## 📱 Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/chord-detected.png" width="30%" alt="Chord Detection">
+  <img src="docs/screenshots/chord-library.png" width="30%" alt="Chord Library">
+  <img src="docs/screenshots/scale-overlay.png" width="30%" alt="Scale Overlay">
+</p>
+<p align="center">
+  <img src="docs/screenshots/strumming-patterns.png" width="30%" alt="Strumming Patterns">
+  <img src="docs/screenshots/chord-progressions.png" width="30%" alt="Chord Progressions">
+  <img src="docs/screenshots/circle-of-fifths.png" width="30%" alt="Circle of Fifths">
+</p>
+
 ### ⚙️ Settings
 
 - **Display**: Sharp/Flat note names, Light/Dark/System theme
