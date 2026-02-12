@@ -1,5 +1,11 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Ask a Question
+    url: https://github.com/baijum/ukulele-chords/discussions/categories/q-a
+    about: Ask questions and get help from the community in Discussions.
+  - name: Suggest an Idea
+    url: https://github.com/baijum/ukulele-chords/discussions/categories/ideas
+    about: Share feature ideas or suggestions in Discussions before opening an issue.
   - name: Contributing Guide
     url: https://github.com/baijum/ukulele-chords/blob/main/CONTRIBUTING.md
     about: Read the contributing guidelines before opening an issue or PR.
