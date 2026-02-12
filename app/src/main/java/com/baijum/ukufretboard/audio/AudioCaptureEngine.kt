@@ -85,30 +85,49 @@ object AudioCaptureEngine {
         recorder.startRecording()
 
         captureJob = scope.launch {
-            withContext(Dispatchers.Default) {
-                val shortBuf = ShortArray(FRAME_SIZE)
-                val floatBuf = FloatArray(FRAME_SIZE)
+            try {
+                withContext(Dispatchers.Default) {
+                    val shortBuf = ShortArray(FRAME_SIZE)
+                    val floatBuf = FloatArray(FRAME_SIZE)
 
-                while (isActive) {
-                    val read = recorder.read(shortBuf, 0, FRAME_SIZE)
-                    if (read > 0) {
-                        for (i in 0 until read) {
-                            floatBuf[i] = shortBuf[i] * SHORT_TO_FLOAT
+                    while (isActive) {
+                        val read = try {
+                            recorder.read(shortBuf, 0, FRAME_SIZE)
+                        } catch (_: IllegalStateException) {
+                            // Recorder was stopped/released — exit gracefully.
+                            break
                         }
-                        onBuffer(floatBuf.copyOf(read))
+                        // Only emit complete frames.  When the recorder is
+                        // stopped, read() may return a partial buffer whose
+                        // length is not a power of two, which would crash the
+                        // downstream FFT (requires power-of-2 input).
+                        if (read == FRAME_SIZE) {
+                            for (i in 0 until read) {
+                                floatBuf[i] = shortBuf[i] * SHORT_TO_FLOAT
+                            }
+                            onBuffer(floatBuf)
+                        }
                     }
                 }
+            } finally {
+                recorder.release()
             }
         }
     }
 
     /**
      * Stops capturing and releases the [AudioRecord] resource.
+     *
+     * The [AudioRecord] is stopped here to unblock any pending [AudioRecord.read]
+     * call in the capture coroutine. The actual [AudioRecord.release] is deferred
+     * to the coroutine's `finally` block so it runs only **after** the capture
+     * loop has exited, avoiding a race where `release()` frees native resources
+     * while `read()` is still using them.
      */
     fun stop() {
-        captureJob?.cancel()
-        captureJob = null
-
+        // Stop recording first to unblock any pending read() call in the
+        // capture coroutine.  Without this, cancel() alone cannot interrupt
+        // the blocking AudioRecord.read().
         audioRecord?.let { rec ->
             try {
                 if (rec.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
@@ -117,8 +136,12 @@ object AudioCaptureEngine {
             } catch (_: IllegalStateException) {
                 // Already stopped — ignore.
             }
-            rec.release()
         }
+
+        // Cancel the capture coroutine.  The finally block inside start()
+        // will call recorder.release() once the coroutine finishes.
+        captureJob?.cancel()
+        captureJob = null
         audioRecord = null
     }
 }

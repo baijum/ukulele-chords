@@ -162,6 +162,11 @@ class PitchMonitorViewModel : ViewModel() {
     private fun processBuffer(samples: FloatArray) {
         if (!_uiState.value.isListening) return
 
+        // Guard: the FFT requires a power-of-2 buffer.  When the recorder is
+        // stopped, a partial (non-power-of-2) buffer may slip through; drop it.
+        val n = samples.size
+        if (n == 0 || n and (n - 1) != 0) return
+
         val now = System.currentTimeMillis()
 
         // =====================================================================
