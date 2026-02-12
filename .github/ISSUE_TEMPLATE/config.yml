@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contributing Guide
+    url: https://github.com/baijum/ukulele-chords/blob/main/CONTRIBUTING.md
+    about: Read the contributing guidelines before opening an issue or PR.
+  - name: Security Vulnerability
+    url: https://github.com/baijum/ukulele-chords/blob/main/SECURITY.md
+    about: Please report security issues privately. Do not open a public issue.

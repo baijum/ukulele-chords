@@ -14,7 +14,7 @@
   <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.0-blue.svg?logo=kotlin" alt="Kotlin"></a>
   <a href="https://developer.android.com/compose"><img src="https://img.shields.io/badge/Jetpack%20Compose-Material3-green.svg?logo=jetpackcompose" alt="Jetpack Compose"></a>
   <a href="https://developer.android.com/about/versions/oreo"><img src="https://img.shields.io/badge/Min%20SDK-26-orange.svg" alt="Min SDK"></a>
-  <a href="#license"><img src="https://img.shields.io/badge/License-Educational-lightgrey.svg" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
 </p>
 
 ---
@@ -181,6 +181,8 @@ The AAB will be at `app/build/outputs/bundle/release/app-release.aab`.
 
 **Contributions are welcome!** Whether you're fixing a bug, adding a feature, improving documentation, or refactoring code — we'd love your help.
 
+Please read the [Contributing Guide](CONTRIBUTING.md) for detailed instructions on development setup, code guidelines, and the PR process. All participants are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ### How to Contribute
 
 1. **Fork** the repository
@@ -270,7 +272,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for full details.
 
 ## 📜 License
 
-This project is provided as-is for educational purposes.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
