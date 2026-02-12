@@ -274,6 +274,14 @@ As a tester you can:
 
 ---
 
+## 💬 Feedback Wanted: Neural-Powered Tuner
+
+We are exploring adding a lightweight neural pitch estimator ([SwiftF0](https://github.com/lars76/swift-f0)) to work alongside the existing tuner. This could improve accuracy in noisy environments and reduce octave errors on low strings — without sacrificing the fast, responsive needle you already have.
+
+The full design is in [`docs/22-neural-pitch-supervisor.md`](docs/22-neural-pitch-supervisor.md). If you have thoughts on whether this would be useful for your playing — especially if you tune in noisy settings like rehearsals, open mics, or outdoors — we would love to hear from you in [GitHub Discussions](https://github.com/baijum/ukulele-chords/discussions).
+
+---
+
 ## 🙏 Attribution
 
 Audio samples are from the "Ukelele single notes, close-mic" pack by
