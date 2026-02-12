@@ -1,91 +1,160 @@
-# Ukulele Companion
+<p align="center">
+  <img src="docs/app-icon-512.png" alt="Ukulele Companion" width="128" height="128">
+</p>
 
-A free, offline, ad-free Android app for learning ukulele — chords, scales, music theory, composition tools, and more. Built with **Kotlin** and **Jetpack Compose**.
+<h1 align="center">🎵 Ukulele Companion</h1>
 
-## Features
+<p align="center">
+  <b>A free, offline, ad-free Android app for learning ukulele</b><br>
+  Chords, scales, music theory, composition tools, and more.<br>
+  Built with <b>Kotlin</b> and <b>Jetpack Compose</b>.
+</p>
 
-### Interactive Fretboard Explorer
+<p align="center">
+  <a href="https://kotlinlang.org"><img src="https://img.shields.io/badge/Kotlin-2.0-blue.svg?logo=kotlin" alt="Kotlin"></a>
+  <a href="https://developer.android.com/compose"><img src="https://img.shields.io/badge/Jetpack%20Compose-Material3-green.svg?logo=jetpackcompose" alt="Jetpack Compose"></a>
+  <a href="https://developer.android.com/about/versions/oreo"><img src="https://img.shields.io/badge/Min%20SDK-26-orange.svg" alt="Min SDK"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-Educational-lightgrey.svg" alt="License"></a>
+</p>
+
+---
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🎸 Interactive Fretboard Explorer
 Tap fret positions on a visual ukulele fretboard (standard GCEA tuning, frets 0–12) and the app instantly detects and displays the chord. Supports 9 chord types: Major, Minor, Dom7, Min7, Maj7, Diminished, Augmented, Sus2, and Sus4.
 
-### Chord Library
+### 📚 Chord Library
 Browse playable voicings for any chord. Select a root note, category (Triad, Seventh, Suspended, Extended), and chord type to see algorithmically generated voicings displayed as mini fretboard diagrams.
 
-### Transpose
+### 🔄 Transpose
 Shift chords up or down by semitones with +/- buttons. Shows the capo equivalent for easy reference.
 
-### Strumming Patterns
+### 🥁 Strumming Patterns
 A reference guide with 8 common ukulele strumming patterns — from beginner (All Downs, Island Strum) to intermediate (Calypso, Ska). Each pattern includes visual beat arrows, notation, description, and suggested tempo.
 
-### Chord Progressions
-Common chord progressions for any key, in both major and minor scales. Includes Pop, Classic Rock, 50s, Folk, Jazz ii-V-I, Reggae, and more. Tap any chord chip to jump to its voicings in the Chord Library.
+### 🎶 Chord Progressions
+Common chord progressions for any key, in both major and minor scales. Includes Pop, Classic Rock, 50s, Folk, Jazz ii-V-I, Reggae, and more. Tap any chord chip to jump to its voicings.
 
-### Scale Overlay
-Highlight notes from any of 7 scales (Major, Minor, Pentatonic Major/Minor, Blues, Dorian, Mixolydian) directly on the fretboard. Root notes are shown with a distinct color.
+</td>
+<td width="50%">
 
-### Favorites
+### 🎼 Scale Overlay
+Highlight notes from any of 7 scales (Major, Minor, Pentatonic Major/Minor, Blues, Dorian, Mixolydian) directly on the fretboard. Root notes shown with a distinct color.
+
+### ⭐ Favorites
 Long-press any voicing in the Chord Library to save it. Access your saved voicings from the dedicated Favorites tab.
 
-### Song Chord Sheets
-Create a personal songbook with lyrics and inline chord markers (e.g., `Some[C]where over the [Em]rainbow`). Tap any chord name in a sheet to view its voicings.
+### 📝 Song Chord Sheets
+Create a personal songbook with lyrics and inline chord markers (e.g., `Some[C]where over the [Em]rainbow`). Tap any chord name to view its voicings.
 
-### Chord of the Day Widget
-A home screen widget that displays a new chord each day with its name, finger positions, and notes. Tapping the widget opens the app.
+### 📅 Chord of the Day Widget
+A home screen widget that displays a new chord each day with its name, finger positions, and notes.
 
-### Sound Playback
+### 🔊 Sound Playback
 Hear chords played back using sine wave synthesis. Notes are strummed with a configurable delay between strings.
 
-### Settings
+### 🎓 Music Theory & Learning
+Theory lessons, ear training, interval trainer, circle of fifths, glossary, scale practice, spaced repetition, achievements, and more.
+
+</td>
+</tr>
+</table>
+
+### ⚙️ Settings
+
 - **Display**: Sharp/Flat note names, Light/Dark/System theme
-- **Tuning**: High-G (standard) or Low-G
+- **Tuning**: High-G (standard), Low-G, Baritone, D-Tuning
 - **Fretboard**: Left-handed mode (mirrors the fretboard)
 - **Sound**: Enable/disable, strum delay, note duration
 
-## Philosophy
+---
 
-- **Free forever** — no ads, no in-app purchases
-- **Fully offline** — no internet required, no analytics, no tracking
-- **No login** — just open and play
-- **Educational** — designed for beginners and learners
+## 💡 Philosophy
 
-## Tech Stack
+| Principle | What it means |
+|-----------|---------------|
+| **Free forever** | No ads, no in-app purchases — ever |
+| **Fully offline** | No internet required, no analytics, no tracking |
+| **No login** | Just open and play |
+| **Educational** | Designed for beginners and learners |
+
+---
+
+## 🏗️ Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| Language | Kotlin |
-| UI | Jetpack Compose + Material3 |
+| Language | Kotlin 2.0 |
+| UI | Jetpack Compose + Material 3 |
 | Architecture | ViewModel + StateFlow |
 | Audio | Android AudioTrack (sine wave synthesis) |
 | Widget | Jetpack Glance |
 | Persistence | SharedPreferences |
+| Serialization | Kotlinx Serialization |
 | Min SDK | 26 (Android 8.0) |
 | Target SDK | 35 |
 
-## Project Structure
+---
+
+## 📁 Project Structure
 
 ```
 com.baijum.ukufretboard
-├── audio/              # Sine wave tone generation
+├── audio/              # Sine wave tone generation, metronome, audio capture
+│   ├── AudioCaptureEngine.kt
+│   ├── MetronomeEngine.kt
+│   └── ToneGenerator.kt
 ├── data/               # Notes, chords, scales, progressions, patterns, persistence
-├── domain/             # Chord detection, transposition, note/chord models
-├── ui/                 # Compose screens and components
-├── viewmodel/          # UI state management (ViewModel + StateFlow)
-└── widget/             # Chord of the Day home screen widget
+│   ├── ChordFormulas, Notes, Scales, Progressions, StrumPatterns
+│   ├── Repositories (Favorites, SRS, LearningProgress, Achievements)
+│   ├── ChordPro parser/exporter, VoicingGenerator
+│   └── sync/           # Backup & restore
+├── domain/             # Core business logic
+│   ├── ChordDetector, AudioChordDetector, PitchDetector
+│   ├── Transpose, CapoCalculator, KeyDetector
+│   ├── ScalePracticeGenerator, SrsScheduler
+│   └── VoiceLeading, AchievementChecker
+├── ui/                 # Compose screens and components (30+ screens)
+│   ├── FretboardScreen (main navigation)
+│   ├── Tabs: ChordLibrary, Favorites, Progressions, Songbook, Tuner
+│   ├── Views: CircleOfFifths, TheoryQuiz, EarTraining, PlayAlong
+│   └── theme/          # Material 3 theming
+├── viewmodel/          # UI state management (11 ViewModels)
+│   ├── FretboardViewModel, ChordLibraryViewModel
+│   ├── SettingsViewModel, SongbookViewModel
+│   └── TunerViewModel, PitchMonitorViewModel
+└── widget/             # Chord of the Day home screen widget (Glance)
 ```
 
-## Building
+> **132 Kotlin source files** across 6 packages — a well-organized, single-module Android app.
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Android Studio (latest stable)
+- [Android Studio](https://developer.android.com/studio) (latest stable — Ladybug or newer)
 - JDK 11+
 
-### Debug Build
+### Clone & Build
 
 ```bash
+git clone https://github.com/baijum/ukulele-chords.git
+cd ukulele-chords
 ./gradlew assembleDebug
 ```
 
-The APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
+The debug APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
+
+### Run on Emulator or Device
+
+Open the project in Android Studio, select a device/emulator, and click **Run** (or press `Shift+F10`).
 
 ### Release Build
 
@@ -106,7 +175,90 @@ keyPassword=your_key_password
 
 The AAB will be at `app/build/outputs/bundle/release/app-release.aab`.
 
-## Attribution
+---
+
+## 🤝 Contributing
+
+**Contributions are welcome!** Whether you're fixing a bug, adding a feature, improving documentation, or refactoring code — we'd love your help.
+
+### How to Contribute
+
+1. **Fork** the repository
+2. **Create a branch** for your feature or fix (`git checkout -b feature/my-feature`)
+3. **Make your changes** and test them
+4. **Commit** with a clear message (`git commit -m "Add: description of change"`)
+5. **Push** to your fork (`git push origin feature/my-feature`)
+6. **Open a Pull Request** describing what you changed and why
+
+### 🤖 AI-Assisted Contributing
+
+We actively encourage contributors to use **AI coding tools** to accelerate their work on this project. The codebase is well-structured and AI-friendly:
+
+- **Use [Cursor](https://cursor.com), [GitHub Copilot](https://github.com/features/copilot), or similar AI tools** to explore the codebase, understand patterns, and generate code that fits the existing architecture.
+- **Leverage AI for code reviews** — before submitting a PR, ask an AI assistant to review your changes for consistency with the project's patterns.
+- **Use AI to write tests** — the project currently has no automated tests (see [Good First Issues](#-good-first-issues) below), making it a perfect opportunity for AI-assisted test generation.
+- **AI-powered documentation** — use AI tools to help write clear commit messages, PR descriptions, and inline documentation.
+
+> **Tip:** This project uses standard Kotlin + Jetpack Compose patterns. AI tools work exceptionally well with the codebase because it follows consistent conventions throughout.
+
+### 🟢 Good First Issues
+
+Looking for a place to start? Here are some areas where contributions would be especially valuable:
+
+| Area | Description | Difficulty |
+|------|-------------|------------|
+| **Unit Tests** | Add tests for `ChordDetector`, `Transpose`, `CapoCalculator`, and other domain logic | Beginner |
+| **UI Tests** | Add Compose UI tests for screens and components | Beginner |
+| **Accessibility** | Improve content descriptions and TalkBack support | Beginner |
+| **New Scales** | Add more scale types to the Scale Overlay feature | Beginner |
+| **New Strumming Patterns** | Expand the strumming pattern library | Beginner |
+| **New Chord Progressions** | Add genre-specific chord progressions | Beginner |
+| **Localization** | Translate the app into other languages | Intermediate |
+| **CI/CD** | Set up GitHub Actions for build verification | Intermediate |
+| **Alternate Tunings** | Add support for more ukulele tuning variants | Intermediate |
+| **Instrument Samples** | Replace sine wave synthesis with real ukulele samples | Advanced |
+
+### Code Style
+
+- **Kotlin** with official code style
+- **Jetpack Compose** for all UI — no XML layouts
+- **ViewModel + StateFlow** for state management
+- **SharedPreferences** for persistence (via repository pattern)
+- Follow existing patterns in the codebase — consistency is valued
+
+### Architecture at a Glance
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│     UI      │ ──▶ │  ViewModel   │ ──▶ │   Domain    │
+│  (Compose)  │ ◀── │ (StateFlow)  │ ◀── │   (Logic)   │
+└─────────────┘     └──────────────┘     └─────────────┘
+                           │                     │
+                           ▼                     ▼
+                    ┌──────────────┐     ┌─────────────┐
+                    │     Data     │     │    Audio     │
+                    │ (Repository) │     │  (Playback)  │
+                    └──────────────┘     └─────────────┘
+```
+
+- **UI layer**: 44 Compose files, single-activity architecture via `MainActivity`
+- **ViewModel layer**: 11 ViewModels managing state with `StateFlow`
+- **Domain layer**: Pure Kotlin logic for chord detection, transposition, scales, SRS scheduling
+- **Data layer**: Repositories wrapping SharedPreferences, chord formulas, scale data
+- **Audio layer**: Tone generation, metronome, microphone-based pitch detection
+
+---
+
+## 📖 Documentation
+
+Detailed feature documentation and a user manual are available in the [`docs/`](docs/) directory:
+
+- **Feature specs**: 20 design documents covering each major feature
+- **User manual**: Step-by-step guide with screenshots in [`docs/manual/`](docs/manual/)
+
+---
+
+## 🙏 Attribution
 
 Audio samples are from the "Ukelele single notes, close-mic" pack by
 [stomachache](https://freesound.org/people/stomachache/packs/8545/) on
@@ -114,6 +266,15 @@ Freesound.org, licensed under
 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 See [ATTRIBUTION.md](ATTRIBUTION.md) for full details.
 
-## License
+---
+
+## 📜 License
 
 This project is provided as-is for educational purposes.
+
+---
+
+<p align="center">
+  <b>Built with ❤️ for ukulele players everywhere</b><br>
+  <sub>Star the repo if you find it useful — it helps others discover the project!</sub>
+</p>
